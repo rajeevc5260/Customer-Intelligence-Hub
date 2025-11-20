@@ -1,21 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { api } from '$lib/api';
-  import type { Client, Project, Stakeholder } from '$lib/types';
-
-  type LocalInsight = {
-    id: string;
-    clientId: string;
-    clientName: string;
-    summary?: string;
-    themes?: string;
-    status: 'pending' | 'approved';
-    automation?: {
-      batchTriggered: boolean;
-      opportunityId?: string | null;
-      taskIds?: string[];
-    };
-  };
+  import type { Client, Insight, Project, Stakeholder } from '$lib/types';
 
   let clients = $state<Client[]>([]);
   let selectedClientId = $state<string | null>(null);
@@ -29,15 +15,20 @@
     rawText: ''
   });
 
-  let approvalId = $state('');
   let message = $state('');
   let error = $state('');
   let loadingClients = $state(true);
   let submitting = $state(false);
-  let approving = $state(false);
+  let approvingId = $state<string | null>(null);
+  let feedLoading = $state(false);
 
-  let recentInsights = $state<LocalInsight[]>([]);
+  let insightFeed = $state<Insight[]>([]);
   let lastLoadedContext = $state<string | null>(null);
+
+  const timestampFormatter = new Intl.DateTimeFormat('en', {
+    dateStyle: 'medium',
+    timeStyle: 'short'
+  });
 
   async function loadClients() {
     loadingClients = true;
@@ -72,6 +63,26 @@
     }
   }
 
+  async function loadInsights(clientId?: string | null) {
+    if (!clientId) {
+      insightFeed = [];
+      return;
+    }
+
+    feedLoading = true;
+    message = '';
+    error = '';
+
+    try {
+      const data: Insight[] = await api.insights.list({ clientId, limit: 100 });
+      insightFeed = data;
+    } catch (err: any) {
+      error = err?.message || 'Unable to load insights.';
+    } finally {
+      feedLoading = false;
+    }
+  }
+
   async function handleCreate(event: SubmitEvent) {
     event.preventDefault();
     if (!selectedClientId) return;
@@ -88,19 +99,9 @@
         rawText: createForm.rawText
       });
 
-      const newInsight: LocalInsight = {
-        id: response.id,
-        clientId: selectedClientId,
-        clientName: clients.find((client) => client.id === selectedClientId)?.name || 'Client',
-        summary: response.data?.summary,
-        themes: response.data?.themes,
-        status: 'pending'
-      };
-
-      recentInsights = [newInsight, ...recentInsights].slice(0, 5);
       message = 'Insight enriched and saved. Awaiting approval.';
       createForm = { projectId: '', stakeholderId: '', rawText: '' };
-      approvalId = response.id;
+      await loadInsights(selectedClientId);
     } catch (err: any) {
       error = err?.message || 'Unable to create insight.';
     } finally {
@@ -108,47 +109,68 @@
     }
   }
 
-  async function handleApprove(event: SubmitEvent) {
-    event.preventDefault();
-    if (!approvalId) return;
-
-    approving = true;
+  async function handleApprove(insightId: string) {
     message = '';
     error = '';
+    approvingId = insightId;
 
     try {
-      const response = await api.insights.approve(approvalId);
+      const response = await api.insights.approve(insightId);
       message = response.batchTriggered
         ? 'Insight approved and automation triggered.'
         : 'Insight approved.';
 
-      recentInsights = recentInsights.map((insight) =>
-        insight.id === approvalId
+      insightFeed = insightFeed.map((insight) =>
+        insight.id === insightId
           ? {
               ...insight,
               status: 'approved',
-              automation: {
-                batchTriggered: response.batchTriggered,
-                opportunityId: response.opportunityId,
-                taskIds: response.taskIds
-              }
+              // preserve other fields
             }
           : insight
       );
     } catch (err: any) {
       error = err?.message || 'Unable to approve insight.';
     } finally {
-      approving = false;
+      approvingId = null;
     }
   }
 
   $effect(() => {
     if (selectedClientId) {
+      createForm.projectId = '';
+      createForm.stakeholderId = '';
       loadClientContext(selectedClientId);
+      loadInsights(selectedClientId);
+    } else {
+      insightFeed = [];
     }
   });
 
   onMount(loadClients);
+
+  function getInitials(fullName?: string | null, email?: string | null) {
+    if (fullName) {
+      const parts = fullName.trim().split(' ');
+      const initials = parts.slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join('');
+      return initials || fullName.charAt(0).toUpperCase();
+    }
+    if (email) return email.charAt(0).toUpperCase();
+    return '?';
+  }
+
+  function parseThemes(themes?: string | null) {
+    if (!themes) return [];
+    if (themes.trim().startsWith('[')) {
+      try {
+        const parsed = JSON.parse(themes);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+    return themes.split(',').map((item) => item.trim()).filter(Boolean);
+  }
 </script>
 
 <section class="space-y-6">
@@ -172,142 +194,184 @@
   {/if}
 
   <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-    <div class="xl:col-span-2 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm space-y-4">
-      <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Create AI-Enriched Insight</h3>
-      <form class="space-y-4" onsubmit={handleCreate}>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div class="md:col-span-1">
-            <label class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Client</label>
-            <select
-              class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-              bind:value={selectedClientId}
-              disabled={loadingClients}
-            >
-              {#if loadingClients}
-                <option>Loading...</option>
-              {:else if clients.length === 0}
-                <option>No clients found</option>
-              {:else}
-                {#each clients as client}
-                  <option value={client.id}>{client.name}</option>
-                {/each}
-              {/if}
-            </select>
-          </div>
-          <div>
-            <label class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Project</label>
-            <select
-              class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-              bind:value={createForm.projectId}
-              disabled={contextLoading}
-            >
-              <option value="">Auto-detect</option>
-              {#each projects as project}
-                <option value={project.id}>{project.name}</option>
-              {/each}
-            </select>
-          </div>
-          <div>
-            <label class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Stakeholder</label>
-            <select
-              class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-              bind:value={createForm.stakeholderId}
-              disabled={contextLoading}
-            >
-              <option value="">Auto-detect</option>
-              {#each stakeholders as stakeholder}
-                <option value={stakeholder.id}>{stakeholder.name}</option>
-              {/each}
-            </select>
-          </div>
-        </div>
-
+    <div class="xl:col-span-2 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm flex flex-col gap-4">
+      <div class="flex items-center justify-between">
         <div>
-          <label class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Raw notes</label>
-          <textarea
-            rows="6"
-            class="w-full rounded-2xl border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-            placeholder="Paste call notes and context..."
-            required
-            bind:value={createForm.rawText}
-          ></textarea>
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Insight Stream</h3>
+          <p class="text-sm text-gray-500 dark:text-gray-400">
+            Everyone on the same client sees the same feed in real time.
+          </p>
         </div>
-
         <button
-          type="submit"
-          class="w-full rounded-xl bg-indigo-600 text-white py-3 font-semibold hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-          disabled={submitting || !selectedClientId}
+          class="inline-flex items-center gap-2 rounded-lg border border-gray-300 dark:border-gray-700 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          onclick={() => loadInsights(selectedClientId)}
+          disabled={feedLoading}
         >
-          {submitting ? 'Enriching...' : 'Enrich Insight'}
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A9 9 0 116.582 9H20"/>
+          </svg>
+          Refresh
         </button>
-      </form>
+      </div>
 
-      {#if recentInsights.length > 0}
-        <div class="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-800">
-          <div class="flex items-center justify-between">
-            <h4 class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wide">
-              Recent drafts
-            </h4>
-            <span class="text-xs text-gray-500 dark:text-gray-400">{recentInsights.length} saved</span>
+      <div class="flex-1 overflow-y-auto pr-1 space-y-4 max-h-128">
+        {#if feedLoading}
+          {#each Array(4) as _}
+            <div class="flex gap-3">
+              <div class="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-800 animate-pulse"></div>
+              <div class="flex-1 rounded-2xl bg-gray-50 dark:bg-gray-800/70 h-24 animate-pulse"></div>
+            </div>
+          {/each}
+        {:else if !insightFeed.length}
+          <div class="rounded-2xl border border-dashed border-gray-300 dark:border-gray-700 p-6 text-center text-sm text-gray-500 dark:text-gray-400">
+            No insights yet for this client. Capture one using the form on the right.
           </div>
-          <div class="space-y-3">
-            {#each recentInsights as insight}
-              <div class="rounded-2xl border border-gray-100 dark:border-gray-800 p-4 space-y-2">
-                <div class="flex items-center justify-between">
-                  <p class="font-semibold text-gray-900 dark:text-white">{insight.clientName}</p>
-                  <span class="text-xs uppercase font-semibold text-indigo-600 dark:text-indigo-300">
-                    {insight.status}
-                  </span>
+        {:else}
+          {#each insightFeed as insight}
+            <div class="flex gap-3 items-start">
+              <div class="h-10 w-10 rounded-full bg-indigo-600 text-white flex items-center justify-center font-semibold">
+                {getInitials(insight.author?.fullName, insight.author?.email)}
+              </div>
+              <div class="flex-1 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/70 p-4 space-y-2">
+                <div class="flex items-start justify-between gap-3">
+                  <div>
+                    <p class="text-sm font-semibold text-gray-900 dark:text-white">
+                      {insight.author?.fullName || insight.author?.email || 'Unknown teammate'}
+                    </p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">
+                      {timestampFormatter.format(new Date(insight.createdAt))}
+                    </p>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span
+                      class={`text-xs font-semibold uppercase tracking-wide ${
+                        insight.status === 'approved'
+                          ? 'text-emerald-600 dark:text-emerald-300'
+                          : 'text-amber-600 dark:text-amber-300'
+                      }`}
+                    >
+                      {insight.status}
+                    </span>
+                    <button
+                      class={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                        insight.status === 'approved'
+                          ? 'border-gray-300 dark:border-gray-700 text-gray-400 cursor-not-allowed'
+                          : 'border-emerald-500 text-emerald-600 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/30'
+                      }`}
+                      title="Approve insight"
+                      onclick={() => handleApprove(insight.id)}
+                      disabled={insight.status === 'approved' || approvingId === insight.id}
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                      </svg>
+                      {approvingId === insight.id ? 'Approving...' : 'Approve'}
+                    </button>
+                  </div>
                 </div>
+
                 {#if insight.summary}
-                  <p class="text-sm text-gray-600 dark:text-gray-300">{insight.summary}</p>
+                  <p class="text-sm text-gray-900 dark:text-gray-100">{insight.summary}</p>
                 {/if}
-                {#if insight.themes}
-                  <p class="text-xs text-gray-500 dark:text-gray-400">
-                    Themes: {insight.themes}
-                  </p>
-                {/if}
-                <div class="text-xs text-gray-400 dark:text-gray-500">
-                  Insight ID: <span class="font-mono">{insight.id}</span>
-                </div>
-                {#if insight.automation}
-                  <div class="rounded-lg bg-indigo-50 dark:bg-indigo-900/30 p-2 text-xs text-indigo-800 dark:text-indigo-100">
-                    Automation triggered → Opportunity {insight.automation.opportunityId || 'pending'}
+
+                <p class="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-line">
+                  {insight.rawText}
+                </p>
+
+                {#if parseThemes(insight.themes).length}
+                  <div class="flex flex-wrap gap-2">
+                    {#each parseThemes(insight.themes) as theme}
+                      <span class="text-xs px-3 py-1 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-800 dark:text-indigo-200">
+                        {theme}
+                      </span>
+                    {/each}
                   </div>
                 {/if}
               </div>
-            {/each}
-          </div>
-        </div>
-      {/if}
+            </div>
+          {/each}
+        {/if}
+      </div>
     </div>
 
     <div class="space-y-6">
-      <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Approve Insight</h3>
-        <form class="space-y-4" onsubmit={handleApprove}>
-          <div>
-            <label class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Insight ID</label>
-            <input
-              class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-mono"
-              placeholder="Use ID from recent list or paste existing"
-              required
-              bind:value={approvalId}
-            />
+      <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm space-y-4">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Create AI-Enriched Insight</h3>
+        <form class="space-y-4" onsubmit={handleCreate}>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="md:col-span-1">
+              <label for="insight-client" class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Client</label>
+              <select
+                id="insight-client"
+                class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                bind:value={selectedClientId}
+                disabled={loadingClients}
+              >
+                {#if loadingClients}
+                  <option>Loading...</option>
+                {:else if clients.length === 0}
+                  <option>No clients found</option>
+                {:else}
+                  {#each clients as client}
+                    <option value={client.id}>{client.name}</option>
+                  {/each}
+                {/if}
+              </select>
+            </div>
+            <div>
+              <label for="insight-project" class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Project</label>
+              <select
+                id="insight-project"
+                class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                bind:value={createForm.projectId}
+                disabled={contextLoading}
+              >
+                <option value="">Auto-detect</option>
+                {#each projects as project}
+                  <option value={project.id}>{project.name}</option>
+                {/each}
+              </select>
+            </div>
+            <div>
+              <label for="insight-stakeholder" class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Stakeholder</label>
+              <select
+                id="insight-stakeholder"
+                class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                bind:value={createForm.stakeholderId}
+                disabled={contextLoading}
+              >
+                <option value="">Auto-detect</option>
+                {#each stakeholders as stakeholder}
+                  <option value={stakeholder.id}>{stakeholder.name}</option>
+                {/each}
+              </select>
+            </div>
           </div>
+
+          <div>
+            <label for="insight-raw" class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Raw notes</label>
+            <textarea
+              id="insight-raw"
+              rows="6"
+              class="w-full rounded-2xl border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              placeholder="Paste call notes and context..."
+              required
+              bind:value={createForm.rawText}
+            ></textarea>
+          </div>
+
           <button
             type="submit"
-            class="w-full rounded-lg bg-emerald-600 text-white py-2.5 font-medium hover:bg-emerald-700 disabled:opacity-50 transition-colors"
-            disabled={approving}
+            class="w-full rounded-xl bg-indigo-600 text-white py-3 font-semibold hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+            disabled={submitting || !selectedClientId}
           >
-            {approving ? 'Approving...' : 'Approve Insight'}
+            {submitting ? 'Enriching...' : 'Enrich Insight'}
           </button>
         </form>
-        <p class="text-xs text-gray-500 dark:text-gray-400 mt-3">
-          Every 5 approved insights per client automatically generates an opportunity with follow-on tasks.
+        <p class="text-xs text-gray-500 dark:text-gray-400">
+          Approved insights every 5 submissions per client still auto-create opportunities and tasks.
         </p>
       </div>
     </div>
   </div>
 </section>
-

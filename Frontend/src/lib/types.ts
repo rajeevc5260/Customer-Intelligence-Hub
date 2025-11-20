@@ -31,11 +31,20 @@ export interface Insight {
   clientId: string | null;
   projectId: string | null;
   stakeholderId: string | null;
+  authorId: string | null;
   rawText: string;
   summary: string | null;
   themes: string | null;
+  timeHorizon?: string | null;
+  budgetSignal?: string | null;
+  competitorMention?: string | null;
   status: string;
   createdAt: string;
+  author?: {
+    id: string;
+    fullName: string | null;
+    email: string | null;
+  } | null;
 }
 
 export interface Opportunity {

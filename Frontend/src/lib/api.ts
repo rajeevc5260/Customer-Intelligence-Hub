@@ -102,6 +102,13 @@ export const api = {
       }),
   },
   insights: {
+    list: (params?: { clientId?: string; limit?: number }) => {
+      const searchParams = new URLSearchParams();
+      if (params?.clientId) searchParams.set("clientId", params.clientId);
+      if (params?.limit) searchParams.set("limit", params.limit.toString());
+      const query = searchParams.toString();
+      return request(`/api/insights${query ? `?${query}` : ""}`);
+    },
     create: (payload: {
       clientId: string;
       projectId?: string;
