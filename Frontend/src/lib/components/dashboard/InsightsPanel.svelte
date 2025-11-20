@@ -207,9 +207,6 @@
           onclick={() => loadInsights(selectedClientId)}
           disabled={feedLoading}
         >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A9 9 0 116.582 9H20"/>
-          </svg>
           Refresh
         </button>
       </div>

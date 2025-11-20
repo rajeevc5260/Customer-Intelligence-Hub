@@ -3,6 +3,12 @@
   import { api } from '$lib/api';
   import type { Campaign, Client, Opportunity } from '$lib/types';
 
+  interface Props {
+    onNavigate?: (section: string) => void;
+  }
+
+  let { onNavigate }: Props = $props();
+
   const formatter = new Intl.DateTimeFormat('en', {
     month: 'short',
     day: 'numeric',
@@ -76,9 +82,6 @@
       class="inline-flex items-center gap-2 rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
       onclick={loadOverview}
     >
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A9 9 0 116.582 9H20"/>
-      </svg>
       Refresh
     </button>
   </div>
@@ -90,51 +93,66 @@
   {/if}
 
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-    <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm">
-      <p class="text-sm text-gray-500 dark:text-gray-400">Clients</p>
-      <p class="mt-2 text-3xl font-semibold text-gray-900 dark:text-white">
+    <button
+      onclick={() => onNavigate?.('clients')}
+      class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700 transition-all text-left group"
+    >
+      <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Clients</p>
+      <p class="mt-2 text-2xl font-bold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
         {loading ? '—' : stats.clients}
       </p>
       <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-        Active relationships being tracked
+        Active relationships
       </p>
-    </div>
+    </button>
 
-    <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm">
-      <p class="text-sm text-gray-500 dark:text-gray-400">Approved Insights</p>
-      <p class="mt-2 text-3xl font-semibold text-gray-900 dark:text-white">
+    <button
+      onclick={() => onNavigate?.('insights')}
+      class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700 transition-all text-left group"
+    >
+      <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Approved Insights</p>
+      <p class="mt-2 text-2xl font-bold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
         {loading ? '—' : stats.approvedInsights}
       </p>
       <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-        Driving automation triggers
+        Automation triggers
       </p>
-    </div>
+    </button>
 
-    <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm">
-      <p class="text-sm text-gray-500 dark:text-gray-400">Opportunities</p>
-      <p class="mt-2 text-3xl font-semibold text-gray-900 dark:text-white">
+    <button
+      onclick={() => onNavigate?.('opportunities')}
+      class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700 transition-all text-left group"
+    >
+      <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Opportunities</p>
+      <p class="mt-2 text-2xl font-bold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
         {loading ? '—' : stats.opportunities}
       </p>
       <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-        Across all revenue stages
+        All revenue stages
       </p>
-    </div>
+    </button>
 
-    <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm">
-      <p class="text-sm text-gray-500 dark:text-gray-400">Campaigns</p>
-      <p class="mt-2 text-3xl font-semibold text-gray-900 dark:text-white">
+    <button
+      onclick={() => onNavigate?.('campaigns')}
+      class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700 transition-all text-left group"
+    >
+      <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Campaigns</p>
+      <p class="mt-2 text-2xl font-bold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
         {loading ? '—' : stats.campaigns}
       </p>
       <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-        Active field intelligence pulls
+        Field intelligence
       </p>
-    </div>
+    </button>
   </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm">
+    <button
+      onclick={() => onNavigate?.('clients')}
+      class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700 transition-all text-left flex flex-col h-fit"
+    >
       <div class="flex items-center justify-between mb-4">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Recent Clients</h3>
+        <h3 class="text-base font-semibold text-gray-900 dark:text-white">Recent Clients</h3>
         <span class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Latest</span>
       </div>
       {#if loading}
@@ -144,27 +162,30 @@
           {/each}
         </div>
       {:else if recentClients.length === 0}
-        <p class="text-sm text-gray-500 dark:text-gray-400">No clients yet.</p>
+        <p class="text-xs text-gray-500 dark:text-gray-400">No clients yet.</p>
       {:else}
-        <ul class="space-y-4">
+        <ul class="space-y-3">
           {#each recentClients as client}
             <li class="flex items-start justify-between gap-3">
-              <div>
-                <p class="font-medium text-gray-900 dark:text-white">{client.name}</p>
-                <p class="text-sm text-gray-500 dark:text-gray-400">{client.industry || '—'}</p>
+              <div class="min-w-0 flex-1">
+                <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{client.name}</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">{client.industry || '—'}</p>
               </div>
-              <span class="rounded-full bg-indigo-50 dark:bg-indigo-900/40 px-3 py-1 text-xs font-medium text-indigo-700 dark:text-indigo-200">
-                {client.approvedInsightsCount} insights
+              <span class="rounded-full bg-indigo-50 dark:bg-indigo-900/40 px-2 py-0.5 text-xs font-medium text-indigo-700 dark:text-indigo-200 whitespace-nowrap">
+                {client.approvedInsightsCount}
               </span>
             </li>
           {/each}
         </ul>
       {/if}
-    </div>
+    </button>
 
-    <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm">
+    <button
+      onclick={() => onNavigate?.('opportunities')}
+      class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700 transition-all text-left"
+    >
       <div class="flex items-center justify-between mb-4">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Opportunities</h3>
+        <h3 class="text-base font-semibold text-gray-900 dark:text-white">Opportunities</h3>
         <span class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Top 5</span>
       </div>
       {#if loading}
@@ -174,33 +195,36 @@
           {/each}
         </div>
       {:else if recentOpportunities.length === 0}
-        <p class="text-sm text-gray-500 dark:text-gray-400">No opportunities yet.</p>
+        <p class="text-xs text-gray-500 dark:text-gray-400">No opportunities yet.</p>
       {:else}
-        <ul class="space-y-4">
+        <ul class="space-y-3">
           {#each recentOpportunities as opportunity}
-            <li class="flex flex-col gap-1 rounded-xl border border-gray-100 dark:border-gray-800 p-3">
-              <div class="flex items-center justify-between">
-                <p class="font-medium text-gray-900 dark:text-white">{opportunity.title}</p>
-                <span class="text-xs font-semibold uppercase tracking-wide text-indigo-600 dark:text-indigo-300">
+            <li class="flex flex-col gap-1 rounded-xl border border-gray-100 dark:border-gray-800 p-2.5">
+              <div class="flex items-center justify-between gap-2">
+                <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{opportunity.title}</p>
+                <span class="text-xs font-semibold uppercase tracking-wide text-indigo-600 dark:text-indigo-300 whitespace-nowrap">
                   {opportunity.stage}
                 </span>
               </div>
               <p class="text-xs text-gray-500 dark:text-gray-400">
-                Created {formatter.format(new Date(opportunity.createdAt))}
+                {formatter.format(new Date(opportunity.createdAt))}
               </p>
               {#if opportunity.description}
-                <p class="text-sm text-gray-600 dark:text-gray-300 line-clamp-2">{opportunity.description}</p>
+                <p class="text-xs text-gray-600 dark:text-gray-300 line-clamp-2">{opportunity.description}</p>
               {/if}
             </li>
           {/each}
         </ul>
       {/if}
-    </div>
+    </button>
 
-    <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm">
+    <button
+      onclick={() => onNavigate?.('campaigns')}
+      class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700 transition-all text-left"
+    >
       <div class="flex items-center justify-between mb-4">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Campaigns</h3>
-        <span class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Active pull</span>
+        <h3 class="text-base font-semibold text-gray-900 dark:text-white">Campaigns</h3>
+        <span class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Active</span>
       </div>
       {#if loading}
         <div class="space-y-3">
@@ -209,22 +233,22 @@
           {/each}
         </div>
       {:else if recentCampaigns.length === 0}
-        <p class="text-sm text-gray-500 dark:text-gray-400">No campaigns yet.</p>
+        <p class="text-xs text-gray-500 dark:text-gray-400">No campaigns yet.</p>
       {:else}
-        <ul class="space-y-4">
+        <ul class="space-y-3">
           {#each recentCampaigns as campaign}
-            <li class="flex flex-col gap-1 rounded-xl border border-gray-100 dark:border-gray-800 p-3">
-              <div class="flex items-center justify-between">
-                <p class="font-medium text-gray-900 dark:text-white">{campaign.topic}</p>
-                <span class="text-xs font-medium text-gray-500 dark:text-gray-400">
-                  {campaign.responseCount} responses
+            <li class="flex flex-col gap-1 rounded-xl border border-gray-100 dark:border-gray-800 p-2.5">
+              <div class="flex items-center justify-between gap-2">
+                <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{campaign.topic}</p>
+                <span class="text-xs font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                  {campaign.responseCount}
                 </span>
               </div>
               <p class="text-xs text-gray-500 dark:text-gray-400">
-                Launched {formatter.format(new Date(campaign.createdAt))}
+                {formatter.format(new Date(campaign.createdAt))}
               </p>
               {#if campaign.description}
-                <p class="text-sm text-gray-600 dark:text-gray-300 line-clamp-2">
+                <p class="text-xs text-gray-600 dark:text-gray-300 line-clamp-2">
                   {campaign.description}
                 </p>
               {/if}
@@ -232,7 +256,7 @@
           {/each}
         </ul>
       {/if}
-    </div>
+    </button>
   </div>
 </section>
 

@@ -120,7 +120,7 @@
   <div class="flex items-center justify-between">
     <div>
       <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Relationships</h2>
-      <p class="text-sm text-gray-500 dark:text-gray-400">
+      <p class="text-xs text-gray-500 dark:text-gray-400">
         Stakeholders and projects linked to each client
       </p>
     </div>
@@ -138,64 +138,67 @@
     </div>
   {/if}
 
-  <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm space-y-6">
-    <div>
-      <label class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
-        Choose client
-      </label>
-      <select
-        class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-        disabled={loadingClients}
-        oninput={handleClientChange}
-      >
-        {#if loadingClients}
-          <option>Loading...</option>
-        {:else if clients.length === 0}
-          <option>No clients found</option>
-        {:else}
-          {#each clients as client}
-            <option selected={client.id === selectedClientId} value={client.id}>
-              {client.name}
-            </option>
-          {/each}
-        {/if}
-      </select>
-    </div>
-
-    {#if loadingRelations}
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {#each Array(2) as _}
-          <div class="h-48 rounded-2xl bg-gray-100 dark:bg-gray-800 animate-pulse"></div>
+  <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 shadow-sm">
+    <label class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2 block">
+      Select Client
+    </label>
+    <select
+      class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+      disabled={loadingClients}
+      oninput={handleClientChange}
+    >
+      {#if loadingClients}
+        <option>Loading...</option>
+      {:else if clients.length === 0}
+        <option>No clients found</option>
+      {:else}
+        {#each clients as client}
+          <option selected={client.id === selectedClientId} value={client.id}>
+            {client.name}
+          </option>
         {/each}
-      </div>
-    {:else if !selectedClientId}
+      {/if}
+    </select>
+  </div>
+
+  {#if loadingRelations}
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {#each Array(2) as _}
+        <div class="h-64 rounded-2xl bg-gray-100 dark:bg-gray-800 animate-pulse"></div>
+      {/each}
+    </div>
+  {:else if !selectedClientId}
+    <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-8 shadow-sm text-center">
       <p class="text-sm text-gray-500 dark:text-gray-400">
         Select a client to review their relationships.
       </p>
-    {:else}
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-5 space-y-4">
-          <div class="flex items-center justify-between">
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Stakeholders</h3>
-            <span class="text-xs text-gray-500 dark:text-gray-400">
-              {stakeholders.length} contacts
+    </div>
+  {:else}
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Stakeholders Section -->
+      <div class="space-y-4">
+        <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 shadow-sm">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-base font-semibold text-gray-900 dark:text-white">Stakeholders</h3>
+            <span class="inline-flex items-center rounded-full bg-indigo-100 dark:bg-indigo-900/40 px-2.5 py-0.5 text-xs font-semibold text-indigo-700 dark:text-indigo-300">
+              {stakeholders.length}
             </span>
           </div>
-          <div class="space-y-3 max-h-80 overflow-y-auto pr-2">
+          <div class="space-y-2 max-h-96 overflow-y-auto pr-1">
             {#if stakeholders.length === 0}
-              <p class="text-sm text-gray-500 dark:text-gray-400">No stakeholders yet.</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400 py-4 text-center">No stakeholders yet.</p>
             {:else}
               {#each stakeholders as stakeholder}
-                <div class="rounded-xl border border-gray-100 dark:border-gray-800 p-3">
-                  <p class="font-medium text-gray-900 dark:text-white">{stakeholder.name}</p>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">
+                <div class="rounded-lg border border-gray-100 dark:border-gray-800 p-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                  <p class="text-sm font-semibold text-gray-900 dark:text-white">{stakeholder.name}</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                     {stakeholder.role || 'Role not set'}
                   </p>
                   {#if stakeholder.email}
                     <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">{stakeholder.email}</p>
                   {/if}
                   {#if stakeholder.notes}
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+                    <p class="text-xs text-gray-600 dark:text-gray-400 mt-1.5 line-clamp-2">
                       {stakeholder.notes}
                     </p>
                   {/if}
@@ -203,22 +206,24 @@
               {/each}
             {/if}
           </div>
+        </div>
 
+        <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 shadow-sm">
+          <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-4">Add Stakeholder</h4>
           <form class="space-y-3" onsubmit={handleStakeholderSubmit}>
-            <h4 class="text-sm font-semibold text-gray-900 dark:text-white">Add stakeholder</h4>
             <input
-              class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
               placeholder="Full name"
               required
               bind:value={stakeholderForm.name}
             />
             <input
-              class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
               placeholder="Role / title"
               bind:value={stakeholderForm.role}
             />
             <input
-              class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
               placeholder="Email"
               type="email"
               bind:value={stakeholderForm.email}
@@ -226,39 +231,42 @@
             <textarea
               rows="2"
               placeholder="Notes"
-              class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
               bind:value={stakeholderForm.notes}
             ></textarea>
             <button
               type="submit"
-              class="w-full rounded-lg bg-indigo-600 text-white py-2.5 font-medium hover:bg-indigo-700 transition-colors"
+              class="w-full rounded-lg bg-indigo-600 text-white py-2 text-sm font-medium hover:bg-indigo-700 transition-colors"
             >
               Save Stakeholder
             </button>
           </form>
         </div>
+      </div>
 
-        <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-5 space-y-4">
-          <div class="flex items-center justify-between">
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Projects</h3>
-            <span class="text-xs text-gray-500 dark:text-gray-400">
-              {projects.length} engagements
+      <!-- Projects Section -->
+      <div class="space-y-4">
+        <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 shadow-sm">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-base font-semibold text-gray-900 dark:text-white">Projects</h3>
+            <span class="inline-flex items-center rounded-full bg-emerald-100 dark:bg-emerald-900/40 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+              {projects.length}
             </span>
           </div>
-          <div class="space-y-3 max-h-80 overflow-y-auto pr-2">
+          <div class="space-y-2 max-h-96 overflow-y-auto pr-1">
             {#if projects.length === 0}
-              <p class="text-sm text-gray-500 dark:text-gray-400">No projects yet.</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400 py-4 text-center">No projects yet.</p>
             {:else}
               {#each projects as project}
-                <div class="rounded-xl border border-gray-100 dark:border-gray-800 p-3">
-                  <div class="flex items-center justify-between">
-                    <p class="font-medium text-gray-900 dark:text-white">{project.name}</p>
-                    <span class="text-xs uppercase text-indigo-600 dark:text-indigo-300">
+                <div class="rounded-lg border border-gray-100 dark:border-gray-800 p-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                  <div class="flex items-start justify-between gap-2">
+                    <p class="text-sm font-semibold text-gray-900 dark:text-white flex-1">{project.name}</p>
+                    <span class="text-xs uppercase font-semibold tracking-wide text-indigo-600 dark:text-indigo-300 whitespace-nowrap">
                       {project.status}
                     </span>
                   </div>
                   {#if project.description}
-                    <p class="text-sm text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">
+                    <p class="text-xs text-gray-600 dark:text-gray-300 mt-1.5 line-clamp-2">
                       {project.description}
                     </p>
                   {/if}
@@ -266,11 +274,13 @@
               {/each}
             {/if}
           </div>
+        </div>
 
+        <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 shadow-sm">
+          <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-4">Add Project</h4>
           <form class="space-y-3" onsubmit={handleProjectSubmit}>
-            <h4 class="text-sm font-semibold text-gray-900 dark:text-white">Add project</h4>
             <input
-              class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
               placeholder="Project name"
               required
               bind:value={projectForm.name}
@@ -278,11 +288,11 @@
             <textarea
               rows="2"
               placeholder="Description"
-              class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
               bind:value={projectForm.description}
             ></textarea>
             <select
-              class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
               bind:value={projectForm.status}
             >
               <option value="active">Active</option>
@@ -291,14 +301,14 @@
             </select>
             <button
               type="submit"
-              class="w-full rounded-lg bg-indigo-600 text-white py-2.5 font-medium hover:bg-indigo-700 transition-colors"
+              class="w-full rounded-lg bg-indigo-600 text-white py-2 text-sm font-medium hover:bg-indigo-700 transition-colors"
             >
               Save Project
             </button>
           </form>
         </div>
       </div>
-    {/if}
-  </div>
+    </div>
+  {/if}
 </section>
 

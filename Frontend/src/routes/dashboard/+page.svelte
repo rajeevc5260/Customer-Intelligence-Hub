@@ -99,7 +99,7 @@
 
         <div class="space-y-6">
           {#if activeSection === 'overview'}
-            <OverviewPanel />
+            <OverviewPanel onNavigate={(section) => activeSection = section} />
           {:else if activeSection === 'clients'}
             <ClientsPanel />
           {:else if activeSection === 'relationships'}

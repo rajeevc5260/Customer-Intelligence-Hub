@@ -121,11 +121,11 @@
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
     <div>
       <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Tasks</h2>
-      <p class="text-sm text-gray-500 dark:text-gray-400">Track follow-up work from insights and opportunities.</p>
+      <p class="text-xs text-gray-500 dark:text-gray-400">Track follow-up work from insights and opportunities</p>
     </div>
     <div class="flex items-center gap-2">
       <input
-        class="rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+        class="rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm px-3 py-2"
         placeholder="Search tasks..."
         bind:value={search}
         onkeydown={(event) => {
@@ -136,7 +136,7 @@
         }}
       />
       <button
-        class="rounded-lg bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900 px-4 py-2 text-sm font-medium"
+        class="rounded-lg bg-indigo-600 text-white px-4 py-2 text-sm font-medium hover:bg-indigo-700 transition-colors"
         onclick={handleSearch}
       >
         Search
@@ -157,93 +157,97 @@
   {/if}
 
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <div class="lg:col-span-2 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
-          <thead class="bg-gray-50 dark:bg-gray-800/50">
-            <tr>
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                Task
-              </th>
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                Priority
-              </th>
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                Due
-              </th>
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                Status
-              </th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
-            {#if loading}
-              {#each Array(5) as _}
-                <tr>
-                  <td colspan="4" class="px-4 py-3">
-                    <div class="h-6 rounded-md bg-gray-100 dark:bg-gray-800 animate-pulse"></div>
-                  </td>
-                </tr>
-              {/each}
-            {:else if tasks.length === 0}
+    <div class="lg:col-span-2 space-y-4">
+      <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
+            <thead class="bg-gray-50 dark:bg-gray-800/50">
               <tr>
-                <td colspan="4" class="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
-                  No tasks found.
-                </td>
+                <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  Task
+                </th>
+                <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  Priority
+                </th>
+                <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  Due
+                </th>
+                <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  Status
+                </th>
               </tr>
-            {:else}
-              {#each tasks as task}
+            </thead>
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-800 bg-white dark:bg-gray-900">
+              {#if loading}
+                {#each Array(5) as _}
+                  <tr>
+                    <td colspan="4" class="px-5 py-4">
+                      <div class="h-12 rounded-lg bg-gray-100 dark:bg-gray-800 animate-pulse"></div>
+                    </td>
+                  </tr>
+                {/each}
+              {:else if tasks.length === 0}
                 <tr>
-                  <td class="px-4 py-3">
-                    <p class="font-semibold text-gray-900 dark:text-white">{task.title}</p>
-                    {#if task.description}
-                      <p class="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
-                        {task.description}
-                      </p>
-                    {/if}
-                    <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                      Created {formatDate(task.createdAt)}
-                    </p>
-                  </td>
-                  <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300 capitalize">
-                    {task.priority}
-                  </td>
-                  <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
-                    {formatDate(task.dueDate)}
-                  </td>
-                  <td class="px-4 py-3">
-                    <select
-                      class="rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white"
-                      bind:value={task.status}
-                      disabled={updatingStatus === task.id}
-                      oninput={(event) =>
-                        handleStatusChange(task.id, (event.target as HTMLSelectElement).value)
-                      }
-                    >
-                      {#each statusOptions as status}
-                        <option value={status}>{status}</option>
-                      {/each}
-                    </select>
+                  <td colspan="4" class="px-5 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
+                    No tasks found.
                   </td>
                 </tr>
-              {/each}
-            {/if}
-          </tbody>
-        </table>
+              {:else}
+                {#each tasks as task}
+                  <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                    <td class="px-5 py-4">
+                      <p class="text-sm font-semibold text-gray-900 dark:text-white">{task.title}</p>
+                      {#if task.description}
+                        <p class="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mt-0.5">
+                          {task.description}
+                        </p>
+                      {/if}
+                      <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                        Created {formatDate(task.createdAt)}
+                      </p>
+                    </td>
+                    <td class="px-5 py-4">
+                      <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize {task.priority === 'high' ? 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300' : task.priority === 'medium' ? 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'}">
+                        {task.priority}
+                      </span>
+                    </td>
+                    <td class="px-5 py-4 text-xs text-gray-700 dark:text-gray-300">
+                      {formatDate(task.dueDate)}
+                    </td>
+                    <td class="px-5 py-4">
+                      <select
+                        class="rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs text-gray-900 dark:text-white py-1 px-2"
+                        bind:value={task.status}
+                        disabled={updatingStatus === task.id}
+                        oninput={(event) =>
+                          handleStatusChange(task.id, (event.target as HTMLSelectElement).value)
+                        }
+                      >
+                        {#each statusOptions as status}
+                          <option value={status}>{status}</option>
+                        {/each}
+                      </select>
+                    </td>
+                  </tr>
+                {/each}
+              {/if}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      <div class="flex items-center justify-between border-t border-gray-200 dark:border-gray-800 px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
-        <span>Page {page} of {totalPages}</span>
-        <div class="flex items-center gap-3">
+      <div class="flex items-center justify-between rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-5 py-3 shadow-sm">
+        <span class="text-xs text-gray-600 dark:text-gray-400">Page {page} of {totalPages}</span>
+        <div class="flex items-center gap-2">
           <button
-            class="rounded-lg border border-gray-300 dark:border-gray-700 px-3 py-1 disabled:opacity-40"
+            class="rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             disabled={page === 1 || loading}
             onclick={() => loadTasks(page - 1)}
           >
             Previous
           </button>
           <button
-            class="rounded-lg border border-gray-300 dark:border-gray-700 px-3 py-1 disabled:opacity-40"
+            class="rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             disabled={page === totalPages || loading}
             onclick={() => loadTasks(page + 1)}
           >
@@ -253,34 +257,34 @@
       </div>
     </div>
 
-    <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm space-y-4">
-      <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Create Task</h3>
+    <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 shadow-sm h-fit">
+      <h3 class="text-base font-semibold text-gray-900 dark:text-white mb-4">Create Task</h3>
       {#if canManageTasks}
-        <form class="space-y-4" onsubmit={handleCreate}>
+        <form class="space-y-3" onsubmit={handleCreate}>
           <div>
-            <label for="task-title" class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Title</label>
+            <label for="task-title" class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 block">Title</label>
             <input
               id="task-title"
-              class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
               required
               bind:value={form.title}
             />
           </div>
           <div>
-            <label for="task-description" class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Description</label>
+            <label for="task-description" class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 block">Description</label>
             <textarea
               id="task-description"
-              rows="3"
-              class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              rows="2"
+              class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
               bind:value={form.description}
             ></textarea>
           </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="grid grid-cols-2 gap-3">
             <div>
-              <label for="task-priority" class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Priority</label>
+              <label for="task-priority" class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 block">Priority</label>
               <select
                 id="task-priority"
-                class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
                 bind:value={form.priority}
               >
                 {#each priorityOptions as priority}
@@ -289,51 +293,51 @@
               </select>
             </div>
             <div>
-              <label for="task-due-date" class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Due date</label>
+              <label for="task-due-date" class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 block">Due date</label>
               <input
                 id="task-due-date"
                 type="date"
-                class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
                 bind:value={form.dueDate}
               />
             </div>
           </div>
           <div>
-            <label for="task-assigned" class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Assign to (user id)</label>
+            <label for="task-assigned" class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 block">Assign to (user id)</label>
             <input
               id="task-assigned"
-              class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
               bind:value={form.assignedTo}
             />
           </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="grid grid-cols-2 gap-3">
             <div>
-              <label for="task-insight" class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Insight ID</label>
+              <label for="task-insight" class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 block">Insight ID</label>
               <input
                 id="task-insight"
-                class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-mono"
+                class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm font-mono"
                 bind:value={form.insightId}
               />
             </div>
             <div>
-              <label for="task-opportunity" class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Opportunity ID</label>
+              <label for="task-opportunity" class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 block">Opportunity ID</label>
               <input
                 id="task-opportunity"
-                class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-mono"
+                class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm font-mono"
                 bind:value={form.opportunityId}
               />
             </div>
           </div>
           <button
             type="submit"
-            class="w-full rounded-lg bg-indigo-600 text-white py-2.5 font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+            class="w-full rounded-lg bg-indigo-600 text-white py-2 text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors"
             disabled={submitting}
           >
             {submitting ? 'Saving...' : 'Create Task'}
           </button>
         </form>
       {:else}
-        <p class="text-sm text-gray-500 dark:text-gray-400">
+        <p class="text-xs text-gray-500 dark:text-gray-400">
           You can review current work, but only consultants, leaders, admins, or ops can create or assign tasks.
         </p>
       {/if}
