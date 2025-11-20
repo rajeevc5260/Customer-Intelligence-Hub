@@ -12,6 +12,7 @@ import { opportunitiesRouter } from "./routes/opportunities.routes.js";
 import { campaignsRouter } from "./routes/campaigns.routes.js";
 import { stakeholdersRouter } from "./routes/stakeholders.routes.js";
 import { projectsRouter } from "./routes/projects.routes.js";
+import { tasksRouter } from "./routes/tasks.routes.js";
 
 const app = express();
 app.use(cors({
@@ -32,6 +33,7 @@ app.use("/api/opportunities", opportunitiesRouter);
 app.use("/api/campaigns", campaignsRouter);
 app.use("/api/stakeholders", stakeholdersRouter);
 app.use("/api/projects", projectsRouter);
+app.use("/api/tasks", tasksRouter);
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {

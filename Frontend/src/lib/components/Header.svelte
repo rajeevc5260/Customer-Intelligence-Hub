@@ -10,7 +10,7 @@
 </script>
 
 <header class="sticky top-0 z-50 backdrop-blur-md bg-white/80 dark:bg-gray-900/80 border-b border-gray-200 dark:border-gray-700">
-  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="flex justify-between items-center h-16">
       <h1 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Customer Intelligence Hub</h1>
       

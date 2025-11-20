@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { api } from '$lib/api';
+  import { authStore } from '$lib/stores/auth.svelte';
   import type { Campaign, CampaignResponse, Client } from '$lib/types';
 
   let campaigns = $state<Campaign[]>([]);
@@ -15,6 +16,7 @@
   let error = $state('');
 
   let selectedCampaignId = $state<string | null>(null);
+  let responsesInfo = $state('');
 
   let createForm = $state({
     topic: '',
@@ -28,6 +30,11 @@
     rawResponse: ''
   });
 
+  const userRole = $derived(authStore.user?.role ?? 'member');
+  const canManageCampaigns = $derived(['leader', 'admin', 'ops'].includes(userRole));
+  const canRespond = $derived(['consultant', 'leader', 'admin', 'ops'].includes(userRole));
+  const canViewResponses = $derived(['leader', 'admin', 'executive'].includes(userRole));
+
   async function loadCampaigns() {
     loadingCampaigns = true;
     message = '';
@@ -37,8 +44,9 @@
       const data = await api.campaigns.list();
       campaigns = data;
       if (!selectedCampaignId && data.length) {
-        selectedCampaignId = data[data.length - 1].id;
-        await loadResponses(selectedCampaignId);
+        const lastCampaignId = data[data.length - 1].id;
+        selectedCampaignId = lastCampaignId;
+        await loadResponses(lastCampaignId);
       }
     } catch (err: any) {
       error = err?.message || 'Unable to load campaigns.';
@@ -53,13 +61,22 @@
     message = '';
     error = '';
 
+    if (!canViewResponses) {
+      responses = [];
+      responsesInfo = 'Your role can submit responses but cannot view others on this campaign.';
+      loadingResponses = false;
+      return;
+    }
+
     try {
       const data = await api.campaigns.responses(campaignId);
       responses = data;
+      responsesInfo = '';
     } catch (err: any) {
       // Some roles cannot view responses; show soft message
       responses = [];
-      error = err?.message || 'Unable to load responses (requires leader/admin role).';
+      responsesInfo =
+        err?.message || 'Unable to load responses (requires leader, admin, or executive access).';
     } finally {
       loadingResponses = false;
     }
@@ -84,6 +101,10 @@
 
   async function handleCreateCampaign(event: SubmitEvent) {
     event.preventDefault();
+    if (!canManageCampaigns) {
+      error = 'Your role cannot launch campaigns.';
+      return;
+    }
     submittingCampaign = true;
     message = '';
     error = '';
@@ -121,6 +142,10 @@
     event.preventDefault();
     if (!selectedCampaignId) {
       error = 'Select a campaign first.';
+      return;
+    }
+    if (!canRespond) {
+      error = 'Your role cannot submit campaign responses.';
       return;
     }
 
@@ -256,12 +281,16 @@
               <div class="h-20 rounded-2xl bg-gray-100 dark:bg-gray-800 animate-pulse"></div>
             {/each}
           </div>
+        {:else if !canViewResponses}
+          <p class="text-sm text-gray-500 dark:text-gray-400">
+            {responsesInfo || 'You can respond to campaigns but cannot view the response feed.'}
+          </p>
         {:else if responses.length === 0}
           <p class="text-sm text-gray-500 dark:text-gray-400">
-            No responses available or access restricted.
+            {responsesInfo || 'No responses captured yet.'}
           </p>
         {:else}
-          <div class="space-y-4 max-h-[28rem] overflow-y-auto pr-2">
+          <div class="space-y-4 max-h-112 overflow-y-auto pr-2">
             {#each responses as response}
               <div class="rounded-2xl border border-gray-100 dark:border-gray-800 p-4 space-y-2">
                 <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
@@ -289,84 +318,102 @@
     <div class="space-y-6">
       <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Launch Campaign</h3>
-        <form class="space-y-4" onsubmit={handleCreateCampaign}>
-          <div>
-            <label class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Topic</label>
-            <input
-              class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-              required
-              bind:value={createForm.topic}
-            />
-          </div>
-          <div>
-            <label class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Description</label>
-            <textarea
-              rows="2"
-              class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-              bind:value={createForm.description}
-            ></textarea>
-          </div>
-          <div>
-            <label class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Questions (one per line)</label>
-            <textarea
-              rows="3"
-              class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-              bind:value={createForm.questions}
-            ></textarea>
-          </div>
-          <div>
-            <label class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Audience user IDs (comma separated)</label>
-            <input
-              class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-mono"
-              bind:value={createForm.audience}
-            />
-          </div>
-          <button
-            type="submit"
-            class="w-full rounded-lg bg-indigo-600 text-white py-2.5 font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-            disabled={submittingCampaign}
-          >
-            {submittingCampaign ? 'Launching...' : 'Create Campaign'}
-          </button>
-        </form>
+        {#if canManageCampaigns}
+          <form class="space-y-4" onsubmit={handleCreateCampaign}>
+            <div>
+              <label for="campaign-topic" class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Topic</label>
+              <input
+                id="campaign-topic"
+                class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                required
+                bind:value={createForm.topic}
+              />
+            </div>
+            <div>
+              <label for="campaign-description" class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Description</label>
+              <textarea
+                id="campaign-description"
+                rows="2"
+                class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                bind:value={createForm.description}
+              ></textarea>
+            </div>
+            <div>
+              <label for="campaign-questions" class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Questions (one per line)</label>
+              <textarea
+                id="campaign-questions"
+                rows="3"
+                class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                bind:value={createForm.questions}
+              ></textarea>
+            </div>
+            <div>
+              <label for="campaign-audience" class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Audience user IDs (comma separated)</label>
+              <input
+                id="campaign-audience"
+                class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-mono"
+                bind:value={createForm.audience}
+              />
+            </div>
+            <button
+              type="submit"
+              class="w-full rounded-lg bg-indigo-600 text-white py-2.5 font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+              disabled={submittingCampaign}
+            >
+              {submittingCampaign ? 'Launching...' : 'Create Campaign'}
+            </button>
+          </form>
+        {:else}
+          <p class="text-sm text-gray-500 dark:text-gray-400">
+            You can review active campaigns, but only leaders, admins, or ops can launch new ones.
+          </p>
+        {/if}
       </div>
 
       <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Submit Response</h3>
-        <form class="space-y-4" onsubmit={handleRespond}>
-          <div>
-            <label class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Client</label>
-            <select
-              class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-              required
-              bind:value={responseForm.clientId}
+        {#if canRespond}
+          <form class="space-y-4" onsubmit={handleRespond}>
+            <div>
+              <label for="campaign-client" class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Client</label>
+              <select
+                id="campaign-client"
+                class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                required
+                bind:value={responseForm.clientId}
+              >
+                <option value="" disabled>Select client</option>
+                {#each clients as client}
+                  <option value={client.id}>{client.name}</option>
+                {/each}
+              </select>
+            </div>
+            <div>
+              <label for="campaign-raw-response" class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Raw response</label>
+              <textarea
+                id="campaign-raw-response"
+                rows="4"
+                class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                required
+                bind:value={responseForm.rawResponse}
+              ></textarea>
+            </div>
+            <button
+              type="submit"
+              class="w-full rounded-lg bg-emerald-600 text-white py-2.5 font-medium hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+              disabled={submittingResponse}
             >
-              <option value="" disabled>Select client</option>
-              {#each clients as client}
-                <option value={client.id}>{client.name}</option>
-              {/each}
-            </select>
-          </div>
-          <div>
-            <label class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Raw response</label>
-            <textarea
-              rows="4"
-              class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-              required
-              bind:value={responseForm.rawResponse}
-            ></textarea>
-          </div>
-          <button
-            type="submit"
-            class="w-full rounded-lg bg-emerald-600 text-white py-2.5 font-medium hover:bg-emerald-700 disabled:opacity-50 transition-colors"
-            disabled={submittingResponse}
-          >
-            {submittingResponse ? 'Submitting...' : 'Send Response'}
-          </button>
-        </form>
-        <p class="text-xs text-gray-500 dark:text-gray-400 mt-3">
-          Every 5th response per campaign triggers AI promotion into opportunities & tasks.
-        </p>
+              {submittingResponse ? 'Submitting...' : 'Send Response'}
+            </button>
+          </form>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-3">
+            Every 5th response per campaign triggers AI promotion into opportunities & tasks.
+          </p>
+        {:else}
+          <p class="text-sm text-gray-500 dark:text-gray-400">
+            Your role can observe campaign outcomes, but only consultants or leaders can submit responses.
+          </p>
+        {/if}
       </div>
     </div>
   </div>

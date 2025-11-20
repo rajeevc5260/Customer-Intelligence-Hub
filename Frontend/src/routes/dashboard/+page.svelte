@@ -9,6 +9,7 @@
   import InsightsPanel from '$lib/components/dashboard/InsightsPanel.svelte';
   import OpportunitiesPanel from '$lib/components/dashboard/OpportunitiesPanel.svelte';
   import CampaignsPanel from '$lib/components/dashboard/CampaignsPanel.svelte';
+  import TasksPanel from '$lib/components/dashboard/TasksPanel.svelte';
 
   let showInviteDialog = $state(false);
   let activeSection = $state('overview');
@@ -19,6 +20,7 @@
     { id: 'relationships', label: 'Stakeholders & Projects' },
     { id: 'insights', label: 'Insights' },
     { id: 'opportunities', label: 'Opportunities' },
+    { id: 'tasks', label: 'Tasks' },
     { id: 'campaigns', label: 'Campaigns' }
   ];
 
@@ -38,46 +40,47 @@
     <Header />
     <InviteDialog bind:isOpen={showInviteDialog} />
 
-    <main class="max-w-6xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+    <main class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
       <div class="space-y-6">
         <div class="rounded-3xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm">
-          <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+          <div class="flex flex-col gap-4">
             <div>
               <p class="text-sm text-gray-500 dark:text-gray-400">Welcome back</p>
               <h2 class="text-2xl font-semibold text-gray-900 dark:text-white">
-                {authStore.user.fullName || authStore.user.email}
+                {authStore.user.fullName || authStore.user.email}!
               </h2>
-              <div class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div class="rounded-xl bg-gray-50 dark:bg-gray-800 p-3">
+              <div class="mt-4 flex items-start gap-3">
+                <div class="rounded-xl bg-gray-50 dark:bg-gray-800 p-3 flex-1">
                   <p class="text-xs uppercase text-gray-500 dark:text-gray-400">Email</p>
                   <p class="text-sm font-medium text-gray-900 dark:text-white break-all">
                     {authStore.user.email}
                   </p>
                 </div>
-                <div class="rounded-xl bg-gray-50 dark:bg-gray-800 p-3">
+                <div class="rounded-xl bg-gray-50 dark:bg-gray-800 p-3 flex-1">
                   <p class="text-xs uppercase text-gray-500 dark:text-gray-400">Role</p>
                   <p class="text-sm font-medium text-gray-900 dark:text-white capitalize">
                     {authStore.user.role}
                   </p>
                 </div>
-                <div class="rounded-xl bg-gray-50 dark:bg-gray-800 p-3">
-                  <p class="text-xs uppercase text-gray-500 dark:text-gray-400">Invite</p>
+              </div>
+              <div class="mt-4 flex items-center justify-end">
+                {#if authStore.user.role === 'admin'}
                   <button
                     onclick={() => showInviteDialog = true}
-                    class="mt-1 inline-flex items-center gap-2 rounded-lg bg-indigo-600 text-white px-3 py-1.5 text-xs font-medium hover:bg-indigo-700 transition-colors"
+                    class="rounded-lg bg-indigo-600 text-white px-4 py-3 text-sm font-medium hover:bg-indigo-700 transition-colors inline-flex items-center gap-2"
                   >
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                     </svg>
                     Invite teammate
                   </button>
-                </div>
+                {/if}
               </div>
             </div>
-            <div class="rounded-2xl border border-dashed border-gray-200 dark:border-gray-700 p-4 text-sm text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800/50">
+            <!-- <div class="rounded-2xl border border-dashed border-gray-200 dark:border-gray-700 p-4 text-sm text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800/50">
               <p class="font-medium text-gray-900 dark:text-white mb-1">How to use this hub</p>
               <p>Use the sections below to manage clients, enrich insights, track opportunities, and run field campaigns in one place.</p>
-            </div>
+            </div> -->
           </div>
         </div>
 
@@ -107,6 +110,8 @@
             <OpportunitiesPanel />
           {:else if activeSection === 'campaigns'}
             <CampaignsPanel />
+          {:else if activeSection === 'tasks'}
+            <TasksPanel />
           {/if}
         </div>
       </div>

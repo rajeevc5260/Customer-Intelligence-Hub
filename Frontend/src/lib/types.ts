@@ -58,6 +58,19 @@ export interface Opportunity {
   createdAt: string;
 }
 
+export interface Task {
+  id: string;
+  assignedTo: string | null;
+  insightId: string | null;
+  opportunityId: string | null;
+  title: string;
+  description: string | null;
+  priority: string;
+  status: string;
+  dueDate: string | null;
+  createdAt: string;
+}
+
 export interface Campaign {
   id: string;
   topic: string;

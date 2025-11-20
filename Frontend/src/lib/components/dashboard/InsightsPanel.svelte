@@ -99,7 +99,7 @@
         rawText: createForm.rawText
       });
 
-      message = 'Insight enriched and saved. Awaiting approval.';
+      message = 'Insight Sent and saved. Awaiting approval.';
       createForm = { projectId: '', stakeholderId: '', rawText: '' };
       await loadInsights(selectedClientId);
     } catch (err: any) {
@@ -177,7 +177,7 @@
   <div>
     <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Insights</h2>
     <p class="text-sm text-gray-500 dark:text-gray-400">
-      Capture consultant intelligence and trigger AI enrichment
+      Capture consultant intelligence and trigger AI Enrichment
     </p>
   </div>
 
@@ -296,9 +296,9 @@
 
     <div class="space-y-6">
       <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm space-y-4">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Create AI-Enriched Insight</h3>
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Create Insight</h3>
         <form class="space-y-4" onsubmit={handleCreate}>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="grid grid-cols-1 gap-4">
             <div class="md:col-span-1">
               <label for="insight-client" class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Client</label>
               <select
@@ -365,7 +365,7 @@
             class="w-full rounded-xl bg-indigo-600 text-white py-3 font-semibold hover:bg-indigo-700 disabled:opacity-50 transition-colors"
             disabled={submitting || !selectedClientId}
           >
-            {submitting ? 'Enriching...' : 'Enrich Insight'}
+            {submitting ? 'Sending...' : 'Send Insight'}
           </button>
         </form>
         <p class="text-xs text-gray-500 dark:text-gray-400">

@@ -173,5 +173,40 @@ export const api = {
     responses: (campaignId: string) =>
       request(`/api/campaigns/${campaignId}/responses`),
   },
+  tasks: {
+    list: (page = 1, limit = 10, search = "") =>
+      request(
+        `/api/tasks?page=${page}&limit=${limit}${
+          search ? `&search=${encodeURIComponent(search)}` : ""
+        }`
+      ),
+    create: (payload: {
+      title: string;
+      description?: string;
+      priority?: string;
+      dueDate?: string;
+      assignedTo?: string;
+      insightId?: string;
+      opportunityId?: string;
+    }) =>
+      request("/api/tasks", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
+    update: (id: string, payload: Record<string, unknown>) =>
+      request(`/api/tasks/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      }),
+    updateStatus: (id: string, status: string) =>
+      request(`/api/tasks/${id}/status`, {
+        method: "POST",
+        body: JSON.stringify({ status }),
+      }),
+    delete: (id: string) =>
+      request(`/api/tasks/${id}`, {
+        method: "DELETE",
+      }),
+  },
 };
 
