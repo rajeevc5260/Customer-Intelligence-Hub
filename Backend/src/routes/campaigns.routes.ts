@@ -4,12 +4,13 @@ import {
     campaigns,
     campaignAudience,
     campaignResponses,
+    clients,
 } from "../db/schema.js";
 import { requireAuth, requireAnyRole } from "../auth/auth.middleware.js";
-import { eq } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import crypto from "node:crypto";
 import { enrichCampaignResponse } from "../ai/campaignEnrichment.js";
-import { generateOpportunityAndTasksFromCampaignResponse } from "../ai/opportunityFromCampaign.js";
+import { generateOpportunityAndTasksFromCampaignBatch, } from "../ai/opportunityFromCampaign.js";
 
 export const campaignsRouter = express.Router();
 
@@ -53,21 +54,34 @@ campaignsRouter.get("/", requireAuth, async (req, res) => {
 });
 
 // Submit response (consultants)
-// Submit response (consultants)
 campaignsRouter.post(
     "/:id/respond",
     requireAuth,
     requireAnyRole("consultant", "leader"),
     async (req, res) => {
-        const { id } = req.params;
-        const { rawResponse } = req.body;
+        const { id } = req.params; // campaignId
+        const { rawResponse, clientId } = req.body;
 
         if (!rawResponse)
             return res.status(400).json({ error: "rawResponse required" });
 
+        if (!clientId)
+            return res.status(400).json({ error: "clientId is required" });
+
+        // Ensure client exists and avoid FK issues
+        const clientRow = await db
+            .select()
+            .from(clients)
+            .where(eq(clients.id, clientId))
+            .limit(1);
+
+        if (!clientRow[0]) {
+            return res.status(400).json({ error: "Invalid clientId" });
+        }
+
         const responseId = crypto.randomUUID();
 
-        // 🔥 AI enrichment
+        // 🔥 Step 1: AI enrichment
         let ai;
         try {
             ai = await enrichCampaignResponse(rawResponse);
@@ -78,6 +92,7 @@ campaignsRouter.post(
             });
         }
 
+        // Step 2: Save response (with clientId)
         await db.insert(campaignResponses).values({
             id: responseId,
             campaignId: id,
@@ -85,12 +100,47 @@ campaignsRouter.post(
             rawResponse,
             summary: ai.summary,
             extractedThemes: JSON.stringify(ai.themes),
+            clientId,
         });
 
-        res.json({
+        // Step 3: Increment responseCount
+        const updated = await db
+            .update(campaigns)
+            .set({
+                responseCount: sql`${campaigns.responseCount} + 1`,
+            })
+            .where(eq(campaigns.id, id))
+            .returning({ count: campaigns.responseCount });
+
+        const newCount = updated[0]?.count ?? 0;
+
+        let batchTriggered = false;
+        let batchResult = null;
+
+        // Step 4: If multiple of 5 → trigger batch AI automatically
+        if (newCount % 5 === 0) {
+            console.log("Triggering batch AI for campaign", id);
+            batchTriggered = true;
+
+            const lastFive = await db
+                .select()
+                .from(campaignResponses)
+                .where(eq(campaignResponses.campaignId, id))
+                .orderBy(desc(campaignResponses.createdAt))
+                .limit(5);
+
+            batchResult = await generateOpportunityAndTasksFromCampaignBatch(lastFive);
+        }
+
+        return res.json({
             success: true,
-            id: responseId,
-            aiFilled: ai,
+            responseId,
+            data: ai,
+            batchTriggered,
+            opportunityId: batchResult?.opportunityId ?? null,
+            taskIds: batchResult?.taskIds ?? [],
+            clientId,
+            batchNumber: Math.floor(newCount / 5),
         });
     }
 );
@@ -114,31 +164,58 @@ campaignsRouter.get(
 );
 
 
-// PROMOTE CAMPAIGN RESPONSE → Opportunity + Tasks
-campaignsRouter.post(
-    "/:campaignId/responses/:responseId/promote",
-    requireAuth,
-    requireAnyRole("leader", "admin", "ops"),
-    async (req, res) => {
-        const { responseId } = req.params;
+// // PROMOTE CAMPAIGN RESPONSE → Opportunity + Tasks
+// campaignsRouter.post(
+//     "/:campaignId/promote",
+//     requireAuth,
+//     requireAnyRole("leader", "admin", "ops"),
+//     async (req, res) => {
+//         const { campaignId } = req.params;
 
-        try {
-            const result = await generateOpportunityAndTasksFromCampaignResponse(
-                responseId
-            );
+//         try {
+//             // 1) Increment response_count atomically
+//             const updated = await db
+//                 .update(campaigns)
+//                 .set({
+//                     responseCount: sql`${campaigns.responseCount} + 1`,
+//                 })
+//                 .where(eq(campaigns.id, campaignId))
+//                 .returning({ count: campaigns.responseCount });
 
-            res.json({
-                success: true,
-                opportunityId: result.opportunityId,
-                taskIds: result.taskIds,
-                clientId: result.clientId,
-            });
-        } catch (err: any) {
-            console.error("[PROMOTE ERROR]", err.message);
-            res.status(500).json({
-                error: "AI promotion failed",
-                message: err.message,
-            });
-        }
-    }
-);
+//             const newCount = updated[0]?.count ?? 0;
+
+//             // 2) Only trigger at 5,10,15,20...
+//             let result = null;
+//             let triggered = false;
+
+//             if (newCount % 5 === 0) {
+//                 triggered = true;
+
+//                 // Fetch last 5 responses for batch processing
+//                 const lastFive = await db
+//                     .select()
+//                     .from(campaignResponses)
+//                     .where(eq(campaignResponses.campaignId, campaignId))
+//                     .orderBy(desc(campaignResponses.createdAt))
+//                     .limit(5);
+
+//                 result = await generateOpportunityAndTasksFromCampaignBatch(lastFive);
+//             }
+
+//             res.json({
+//                 success: true,
+//                 triggered,
+//                 batchCount: newCount,
+//                 opportunityId: result?.opportunityId || null,
+//                 taskIds: result?.taskIds || [],
+//                 clientId: result?.clientId || null,
+//             });
+//         } catch (err: any) {
+//             console.error("[PROMOTE ERROR]", err.message);
+//             res.status(500).json({
+//                 error: "AI batch promotion failed",
+//                 message: err.message,
+//             });
+//         }
+//     }
+// );

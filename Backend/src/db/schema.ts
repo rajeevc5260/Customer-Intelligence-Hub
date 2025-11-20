@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, integer } from "drizzle-orm/pg-core";
 
 export const appUsers = pgTable("app_users", {
   id: text("id").primaryKey(),       // same as supabase auth user id
@@ -16,6 +16,7 @@ export const clients = pgTable("clients", {
   industry: text("industry"),
   description: text("description"),
   createdAt: timestamp("created_at").defaultNow(),
+  approvedInsightsCount: integer("approved_insights_count").notNull().default(0),
 });
 
 // Stakeholders
@@ -118,6 +119,7 @@ export const campaigns = pgTable("campaigns", {
   questions: text("questions"), // JSON string array
   status: text("status").default("active"), // active, closed
   createdAt: timestamp("created_at").defaultNow(),
+  responseCount: integer("response_count").notNull().default(0),
 });
 
 // Campaign audience
@@ -144,4 +146,7 @@ export const campaignResponses = pgTable("campaign_responses", {
   summary: text("summary"),
   extractedThemes: text("extracted_themes"),
   createdAt: timestamp("created_at").defaultNow(),
+  clientId: text("client_id")
+    .references(() => clients.id)
+    .notNull(),
 });

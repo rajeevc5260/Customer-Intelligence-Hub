@@ -1,63 +1,49 @@
 import Anthropic from "@anthropic-ai/sdk";
 import crypto from "crypto";
 import { db } from "../db/drizzle.js";
-import {
-    appUsers,
-    clients,
-    campaignResponses,
-    opportunities,
-    tasks
-} from "../db/schema.js";
+import { appUsers, clients, campaignResponses, opportunities, tasks } from "../db/schema.js";
 import { eq, inArray, ilike } from "drizzle-orm";
-
 const anthropic = new Anthropic({
-    apiKey: process.env.ANTHROPIC_API_KEY!,
+    apiKey: process.env.ANTHROPIC_API_KEY,
 });
-
-function cleanJson(str: string) {
+function cleanJson(str) {
     return str
         .replace(/```json/i, "")
         .replace(/```/g, "")
         .trim();
 }
-
 // Use fuzzy search to infer client context
-async function guessClient(raw: string) {
+async function guessClient(raw) {
     const like = `%${raw.slice(0, 30)}%`;
     const matches = await db
         .select()
         .from(clients)
         .where(ilike(clients.name, like));
-
     return matches[0] || null;
 }
-
-async function pickUserForTeam(team: string | undefined, fallbackUserId: string | null) {
+async function pickUserForTeam(team, fallbackUserId) {
     if (team) {
         const rows = await db
             .select()
             .from(appUsers)
             .where(eq(appUsers.team, team))
             .limit(1);
-        if (rows[0]) return rows[0].id;
+        if (rows[0])
+            return rows[0].id;
     }
     return fallbackUserId;
 }
-
 /**
  * BATCH AI: Generate ONE opportunity + tasks from 5 responses.
  * This version automatically ignores irrelevant responses.
  */
-export async function generateOpportunityAndTasksFromCampaignBatch(responseList: any[]) {
+export async function generateOpportunityAndTasksFromCampaignBatch(responseList) {
     if (!Array.isArray(responseList) || responseList.length === 0) {
         throw new Error("No responses provided to batch generator");
     }
-
     const newest = responseList[0];
-
     // Since users now pass clientId explicitly, we take newest.clientId
     const clientId = newest.clientId;
-
     if (!clientId) {
         console.warn("[BATCH WARNING] No clientId provided in responses.");
         return {
@@ -67,14 +53,12 @@ export async function generateOpportunityAndTasksFromCampaignBatch(responseList:
             skipped: true,
         };
     }
-
     // Load client
     const clientRow = await db
         .select()
         .from(clients)
         .where(eq(clients.id, clientId))
         .limit(1);
-
     if (!clientRow[0]) {
         console.warn("[BATCH WARNING] Invalid clientId in responses.");
         return {
@@ -84,18 +68,15 @@ export async function generateOpportunityAndTasksFromCampaignBatch(responseList:
             skipped: true,
         };
     }
-
     const authors = await db
         .select()
         .from(appUsers)
         .where(inArray(appUsers.id, responseList.map(r => r.userId)));
-
     const contextPayload = {
         responses: responseList,
         authors,
         client: clientRow[0],
     };
-
     // ==== AI CALL ====
     const aiResponse = await anthropic.messages.create({
         model: "claude-haiku-4-5-20251001",
@@ -131,7 +112,6 @@ ${JSON.stringify(contextPayload, null, 2)}
             }
         ]
     });
-
     const textContent = aiResponse.content.find(b => b.type === "text");
     if (!textContent || typeof textContent.text !== "string") {
         throw new Error("AI response did not include required text content.");
@@ -140,13 +120,12 @@ ${JSON.stringify(contextPayload, null, 2)}
     let parsed;
     try {
         parsed = JSON.parse(cleaned);
-    } catch (err) {
+    }
+    catch (err) {
         throw new Error("Failed to parse cleaned AI response: " + cleaned);
     }
-
     // Insert Opportunity
     const oppId = crypto.randomUUID();
-
     await db.insert(opportunities).values({
         id: oppId,
         clientId,
@@ -156,18 +135,11 @@ ${JSON.stringify(contextPayload, null, 2)}
         valueEstimate: parsed.opportunity?.valueEstimate || null,
         stage: "identified",
     });
-
     // Insert Tasks
     const taskIds = [];
-
     for (const t of parsed.tasks || []) {
         const taskId = crypto.randomUUID();
-
-        const assignedUser = await pickUserForTeam(
-            t.assignedToTeam,
-            newest.userId
-        );
-
+        const assignedUser = await pickUserForTeam(t.assignedToTeam, newest.userId);
         await db.insert(tasks).values({
             id: taskId,
             assignedTo: assignedUser,
@@ -179,14 +151,11 @@ ${JSON.stringify(contextPayload, null, 2)}
             status: "open",
             dueDate: t.dueDate ? new Date(t.dueDate) : null,
         });
-
         taskIds.push(taskId);
     }
-
     return {
         opportunityId: oppId,
         taskIds,
         clientId,
     };
 }
-

@@ -1,11 +1,11 @@
 import express from "express";
 import { db } from "../db/drizzle.js";
-import { insights } from "../db/schema.js";
+import { clients, insights } from "../db/schema.js";
 import { requireAuth, requireAnyRole } from "../auth/auth.middleware.js";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import crypto from "crypto";
 import { enrichInsightWithAI } from "../ai/insightEnrichment.js";
-import { generateOpportunityAndTasksFromInsight } from "../ai/opportunityFromInsight.js";
+import { generateOpportunityAndTasksFromInsightBatch } from "../ai/opportunityFromInsight.js";
 
 export const insightsRouter = express.Router();
 
@@ -52,7 +52,7 @@ insightsRouter.post(
     res.json({
       success: true,
       id,
-      aiFilled: ai,
+      data: ai,
     });
   }
 );
@@ -76,37 +76,51 @@ insightsRouter.post("/:id/approve", requireAuth, async (req, res) => {
       .json({ error: "Only leader or author can approve" });
   }
 
-  // Approve the insight
-  await db
-    .update(insights)
-    .set({ status: "approved" })
-    .where(eq(insights.id, id));
-
-  // Trigger AI opportunity + task generation
   let automationResult: { opportunityId?: string; taskIds?: string[] } = {};
-  try {
-    automationResult = await generateOpportunityAndTasksFromInsight(id);
-  } catch (err: any) {
-    console.error("[OPP/TASK AI ERROR] =>", err.message);
-    // We don't fail the approval if AI fails
-  }
+  let batchTriggered = false;
+  let newCount = 0;
+
+  await db.transaction(async (tx) => {
+    // 1) Approve insight
+    await tx
+      .update(insights)
+      .set({ status: "approved" })
+      .where(eq(insights.id, id));
+
+    // 2) Atomically increment client's approvedInsightsCount
+    const updated = await tx
+      .update(clients)
+      .set({
+        approvedInsightsCount: sql`${clients.approvedInsightsCount} + 1`,
+      })
+      .where(eq(clients.id, insight.clientId!))
+      .returning({ count: clients.approvedInsightsCount });
+
+    newCount = updated[0]?.count ?? 0;
+
+    // 3) Only trigger for multiples of 5
+    if (newCount % 5 === 0) {
+      console.log("Triggering AI batch for approved insights")
+      const lastFive = await db
+        .select()
+        .from(insights)
+        .where(
+          eq(insights.clientId, insight.clientId!) &&
+          eq(insights.status, "approved")
+        )
+        .orderBy(sql`${insights.createdAt} DESC`)
+        .limit(5);
+
+      automationResult = await generateOpportunityAndTasksFromInsightBatch(lastFive);
+      batchTriggered = true;
+    }
+  });
 
   res.json({
     success: true,
+    batchTriggered,
+    batchCount: newCount,
     opportunityId: automationResult.opportunityId ?? null,
     taskIds: automationResult.taskIds ?? [],
   });
-});
-
-// LIST INSIGHTS BY CLIENT
-insightsRouter.get("/by-client/:clientId", requireAuth, async (req, res) => {
-  const { clientId } = req.params;
-
-  const data = await db
-    .select()
-    .from(insights)
-    .where(eq(insights.clientId, clientId))
-    .orderBy(insights.createdAt);
-
-  res.json(data);
 });
