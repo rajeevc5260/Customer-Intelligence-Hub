@@ -6,6 +6,7 @@ import "dotenv/config";
 
 import { authRouter } from "./auth/auth.routes.js";
 import { profileRouter } from "./routes/profile.routes.js";
+import { usersRouter } from "./routes/users.routes.js";
 import { clientsRouter } from "./routes/clients.routes.js";
 import { insightsRouter } from "./routes/insights.routes.js";
 import { opportunitiesRouter } from "./routes/opportunities.routes.js";
@@ -27,6 +28,7 @@ app.use("/auth", authRouter);
 
 // field intelligence APIs
 app.use("/api/profile", profileRouter);
+app.use("/api/users", usersRouter);
 app.use("/api/clients", clientsRouter);
 app.use("/api/insights", insightsRouter);
 app.use("/api/opportunities", opportunitiesRouter);

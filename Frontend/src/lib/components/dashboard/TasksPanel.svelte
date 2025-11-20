@@ -11,6 +11,8 @@
   let page = $state(1);
   let totalPages = $state(1);
   let search = $state('');
+  let users = $state<Map<string, { fullName: string | null; email: string; role: string }>>(new Map());
+  let expandedTaskId = $state<string | null>(null);
 
   let loading = $state(true);
   let submitting = $state(false);
@@ -41,6 +43,21 @@
       tasks = response.data;
       page = response.page;
       totalPages = response.totalPages;
+      
+      // Fetch user details for assigned tasks
+      const userIds = [...new Set(tasks.map(t => t.assignedTo).filter(Boolean))];
+      await Promise.all(
+        userIds.map(async (userId) => {
+          if (userId && !users.has(userId)) {
+            try {
+              const user = await api.users.getById(userId);
+              users.set(userId, { fullName: user.fullName, email: user.email, role: user.role });
+            } catch {
+              // Ignore errors for individual users
+            }
+          }
+        })
+      );
     } catch (err: any) {
       error = err?.message || 'Unable to load tasks.';
     } finally {
@@ -115,6 +132,25 @@
     if (!value) return '—';
     return new Intl.DateTimeFormat('en', { dateStyle: 'medium' }).format(new Date(value));
   }
+
+  function getUserInfo(userId: string | null) {
+    if (!userId) return null;
+    return users.get(userId);
+  }
+
+  function getInitials(fullName?: string | null, email?: string | null) {
+    if (fullName) {
+      const parts = fullName.trim().split(' ');
+      const initials = parts.slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join('');
+      return initials || fullName.charAt(0).toUpperCase();
+    }
+    if (email) return email.charAt(0).toUpperCase();
+    return '?';
+  }
+
+  function toggleExpanded(taskId: string) {
+    expandedTaskId = expandedTaskId === taskId ? null : taskId;
+  }
 </script>
 
 <section class="space-y-6">
@@ -166,6 +202,9 @@
                 <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                   Task
                 </th>
+                <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                  Assigned
+                </th>
                 <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                   Priority
                 </th>
@@ -181,30 +220,56 @@
               {#if loading}
                 {#each Array(5) as _}
                   <tr>
-                    <td colspan="4" class="px-5 py-4">
+                    <td colspan="5" class="px-5 py-4">
                       <div class="h-12 rounded-lg bg-gray-100 dark:bg-gray-800 animate-pulse"></div>
                     </td>
                   </tr>
                 {/each}
               {:else if tasks.length === 0}
                 <tr>
-                  <td colspan="4" class="px-5 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
+                  <td colspan="5" class="px-5 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
                     No tasks found.
                   </td>
                 </tr>
               {:else}
                 {#each tasks as task}
-                  <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                  <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer" onclick={() => toggleExpanded(task.id)}>
                     <td class="px-5 py-4">
                       <p class="text-sm font-semibold text-gray-900 dark:text-white">{task.title}</p>
-                      {#if task.description}
-                        <p class="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mt-0.5">
+                      {#if task.description && expandedTaskId !== task.id}
+                        <p class="text-xs text-gray-500 dark:text-gray-400 line-clamp-1 mt-0.5">
                           {task.description}
                         </p>
                       {/if}
                       <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
                         Created {formatDate(task.createdAt)}
                       </p>
+                    </td>
+                    <td class="px-5 py-4">
+                      {#if task.assignedTo}
+                        {@const userInfo = getUserInfo(task.assignedTo)}
+                        {#if userInfo}
+                          <div class="flex items-center gap-2">
+                            <div class="h-8 w-8 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-semibold flex-shrink-0">
+                              {getInitials(userInfo.fullName, userInfo.email)}
+                            </div>
+                            <div class="min-w-0">
+                              <p class="text-xs font-medium text-gray-900 dark:text-white truncate">
+                                {userInfo.fullName || userInfo.email}
+                              </p>
+                              <p class="text-xs text-gray-500 dark:text-gray-400 capitalize -mt-px">
+                                {userInfo.role}
+                              </p>
+                            </div>
+                          </div>
+                        {:else}
+                          <p class="text-xs text-gray-500 dark:text-gray-400">
+                            {task.assignedTo.slice(0, 8)}...
+                          </p>
+                        {/if}
+                      {:else}
+                        <span class="text-xs text-gray-400 dark:text-gray-500">—</span>
+                      {/if}
                     </td>
                     <td class="px-5 py-4">
                       <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize {task.priority === 'high' ? 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300' : task.priority === 'medium' ? 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'}">
@@ -214,7 +279,7 @@
                     <td class="px-5 py-4 text-xs text-gray-700 dark:text-gray-300">
                       {formatDate(task.dueDate)}
                     </td>
-                    <td class="px-5 py-4">
+                    <td class="px-5 py-4" onclick={(e) => e.stopPropagation()}>
                       <select
                         class="rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs text-gray-900 dark:text-white py-1 px-2"
                         bind:value={task.status}
@@ -229,6 +294,103 @@
                       </select>
                     </td>
                   </tr>
+                  {#if expandedTaskId === task.id}
+                    <tr class="bg-gray-50 dark:bg-gray-800/50">
+                      <td colspan="5" class="px-5 py-4">
+                        <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 space-y-4">
+                          <div class="flex items-start justify-between">
+                            <h4 class="text-base font-semibold text-gray-900 dark:text-white">Task Details</h4>
+                            <button
+                              onclick={() => toggleExpanded(task.id)}
+                              class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                            >
+                              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                              </svg>
+                            </button>
+                          </div>
+                          
+                          <div class="grid grid-cols-2 gap-4">
+                            <div>
+                              <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Title</p>
+                              <p class="text-sm text-gray-900 dark:text-white">{task.title}</p>
+                            </div>
+                            <div>
+                              <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Status</p>
+                              <span class="inline-flex items-center rounded-full bg-indigo-100 dark:bg-indigo-900/40 px-2.5 py-0.5 text-xs font-semibold text-indigo-700 dark:text-indigo-300 capitalize">
+                                {task.status}
+                              </span>
+                            </div>
+                          </div>
+
+                          {#if task.description}
+                            <div>
+                              <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Description</p>
+                              <p class="text-sm text-gray-700 dark:text-gray-300">{task.description}</p>
+                            </div>
+                          {/if}
+
+                          <div class="grid grid-cols-3 gap-4">
+                            <div>
+                              <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Priority</p>
+                              <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize {task.priority === 'high' ? 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300' : task.priority === 'medium' ? 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'}">
+                                {task.priority}
+                              </span>
+                            </div>
+                            <div>
+                              <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Due Date</p>
+                              <p class="text-sm text-gray-700 dark:text-gray-300">{formatDate(task.dueDate)}</p>
+                            </div>
+                            <div>
+                              <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Created</p>
+                              <p class="text-sm text-gray-700 dark:text-gray-300">{formatDate(task.createdAt)}</p>
+                            </div>
+                          </div>
+
+                          {#if task.assignedTo}
+                            {@const userInfo = getUserInfo(task.assignedTo)}
+                            <div>
+                              <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Assigned To</p>
+                              {#if userInfo}
+                                <div class="flex items-center gap-3">
+                                  <div class="h-10 w-10 rounded-full bg-indigo-600 text-white flex items-center justify-center text-sm font-semibold">
+                                    {getInitials(userInfo.fullName, userInfo.email)}
+                                  </div>
+                                  <div>
+                                    <p class="text-sm font-medium text-gray-900 dark:text-white">
+                                      {userInfo.fullName || userInfo.email}
+                                    </p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 capitalize">
+                                      {userInfo.role}
+                                    </p>
+                                  </div>
+                                </div>
+                              {:else}
+                                <p class="text-sm text-gray-700 dark:text-gray-300">{task.assignedTo}</p>
+                              {/if}
+                            </div>
+                          {/if}
+
+                          {#if task.insightId || task.opportunityId}
+                            <div class="grid grid-cols-2 gap-4">
+                              {#if task.insightId}
+                                <div>
+                                  <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Insight ID</p>
+                                  <p class="text-xs font-mono text-gray-700 dark:text-gray-300">{task.insightId}</p>
+                                </div>
+                              {/if}
+                              {#if task.opportunityId}
+                                <div>
+                                  <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Opportunity ID</p>
+                                  <p class="text-xs font-mono text-gray-700 dark:text-gray-300">{task.opportunityId}</p>
+                                </div>
+                              {/if}
+                            </div>
+                          {/if}
+                        </div>
+                      </td>
+                    </tr>
+                  {/if}
                 {/each}
               {/if}
             </tbody>
@@ -303,7 +465,7 @@
             </div>
           </div>
           <div>
-            <label for="task-assigned" class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 block">Assign to (user id)</label>
+            <label for="task-assigned" class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 block">Assign to (user ID)</label>
             <input
               id="task-assigned"
               class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"

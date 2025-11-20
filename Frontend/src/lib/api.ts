@@ -208,5 +208,8 @@ export const api = {
         method: "DELETE",
       }),
   },
+  users: {
+    getById: (id: string) => request(`/api/users/${id}`),
+  },
 };
 
