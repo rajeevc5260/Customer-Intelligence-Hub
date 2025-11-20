@@ -1,12 +1,62 @@
 import express from "express";
 import { db } from "../db/drizzle.js";
-import { clients, insights } from "../db/schema.js";
+import { appUsers, clients, insights } from "../db/schema.js";
 import { requireAuth, requireAnyRole } from "../auth/auth.middleware.js";
-import { eq, sql } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import crypto from "crypto";
 import { enrichInsightWithAI } from "../ai/insightEnrichment.js";
 import { generateOpportunityAndTasksFromInsightBatch } from "../ai/opportunityFromInsight.js";
 export const insightsRouter = express.Router();
+// LIST INSIGHTS (optionally by client)
+insightsRouter.get("/", requireAuth, async (req, res) => {
+    const clientId = req.query.clientId;
+    const limit = Math.min(parseInt(req.query.limit) || 50, 200);
+    const baseQuery = db
+        .select({
+        id: insights.id,
+        clientId: insights.clientId,
+        projectId: insights.projectId,
+        stakeholderId: insights.stakeholderId,
+        authorId: insights.authorId,
+        rawText: insights.rawText,
+        summary: insights.summary,
+        themes: insights.themes,
+        timeHorizon: insights.timeHorizon,
+        budgetSignal: insights.budgetSignal,
+        competitorMention: insights.competitorMention,
+        status: insights.status,
+        createdAt: insights.createdAt,
+        authorEmail: appUsers.email,
+        authorFullName: appUsers.fullName,
+    })
+        .from(insights)
+        .leftJoin(appUsers, eq(appUsers.id, insights.authorId));
+    const data = clientId
+        ? await baseQuery.where(eq(insights.clientId, clientId)).orderBy(desc(insights.createdAt)).limit(limit)
+        : await baseQuery.orderBy(desc(insights.createdAt)).limit(limit);
+    res.json(data.map((row) => ({
+        id: row.id,
+        clientId: row.clientId,
+        projectId: row.projectId,
+        stakeholderId: row.stakeholderId,
+        authorId: row.authorId,
+        rawText: row.rawText,
+        summary: row.summary,
+        themes: row.themes,
+        timeHorizon: row.timeHorizon,
+        budgetSignal: row.budgetSignal,
+        competitorMention: row.competitorMention,
+        status: row.status,
+        createdAt: row.createdAt,
+        author: row.authorId
+            ? {
+                id: row.authorId,
+                email: row.authorEmail,
+                fullName: row.authorFullName,
+            }
+            : null,
+    })));
+});
 // CREATE INSIGHT (AI ENRICHED)
 insightsRouter.post("/", requireAuth, requireAnyRole("consultant", "leader"), async (req, res) => {
     const { clientId, projectId, stakeholderId, rawText } = req.body;

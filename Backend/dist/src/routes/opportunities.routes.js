@@ -72,3 +72,42 @@ opportunitiesRouter.post("/:id/stage", requireAuth, requireAnyRole("leader", "ad
         .where(eq(opportunities.id, id));
     res.json({ success: true });
 });
+// Update opportunity
+opportunitiesRouter.put("/:id", requireAuth, requireAnyRole("leader", "admin", "ops"), async (req, res) => {
+    const { id } = req.params;
+    const { clientId, insightId, title, description, valueEstimate, stage } = req.body;
+    // Build update object dynamically
+    const updateData = {};
+    if (clientId !== undefined)
+        updateData.clientId = clientId;
+    if (insightId !== undefined)
+        updateData.insightId = insightId;
+    if (title !== undefined)
+        updateData.title = title;
+    if (description !== undefined)
+        updateData.description = description;
+    if (valueEstimate !== undefined)
+        updateData.valueEstimate = valueEstimate;
+    if (stage !== undefined)
+        updateData.stage = stage;
+    // Protect against empty updates
+    if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({
+            error: "No valid fields provided to update",
+        });
+    }
+    // Update DB
+    const updated = await db
+        .update(opportunities)
+        .set(updateData)
+        .where(eq(opportunities.id, id))
+        .returning();
+    if (!updated.length) {
+        return res.status(404).json({ error: "Opportunity not found" });
+    }
+    res.json({
+        success: true,
+        message: "Opportunity updated",
+        data: updated[0],
+    });
+});

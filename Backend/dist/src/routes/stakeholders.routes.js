@@ -72,3 +72,40 @@ stakeholdersRouter.get("/by-client/:clientId", requireAuth, async (req, res) => 
         .where(eq(stakeholders.clientId, clientId));
     res.json(data);
 });
+// Update stakeholder
+stakeholdersRouter.put("/:id", requireAuth, requireAnyRole("consultant", "leader", "admin", "ops"), async (req, res) => {
+    const { id } = req.params;
+    const { clientId, name, role, email, notes } = req.body;
+    // Build dynamic update object
+    const updateData = {};
+    if (clientId !== undefined)
+        updateData.clientId = clientId;
+    if (name !== undefined)
+        updateData.name = name;
+    if (role !== undefined)
+        updateData.role = role;
+    if (email !== undefined)
+        updateData.email = email;
+    if (notes !== undefined)
+        updateData.notes = notes;
+    // No fields provided → reject
+    if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({
+            error: "No valid fields provided for update",
+        });
+    }
+    // Update database
+    const updated = await db
+        .update(stakeholders)
+        .set(updateData)
+        .where(eq(stakeholders.id, id))
+        .returning();
+    if (!updated.length) {
+        return res.status(404).json({ error: "Stakeholder not found" });
+    }
+    res.json({
+        success: true,
+        message: "Stakeholder updated",
+        data: updated[0],
+    });
+});

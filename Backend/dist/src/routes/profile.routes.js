@@ -12,3 +12,36 @@ profileRouter.get("/", requireAuth, async (req, res) => {
         .limit(1);
     res.json({ user: user[0] });
 });
+// Update profile
+profileRouter.put("/", requireAuth, async (req, res) => {
+    const { fullName, team, role } = req.body;
+    const updateData = {};
+    if (fullName !== undefined)
+        updateData.fullName = fullName;
+    if (team !== undefined)
+        updateData.team = team;
+    // If trying to update role → require admin/leader
+    if (role !== undefined) {
+        if (req.user.role !== "admin" && req.user.role !== "leader") {
+            return res.status(403).json({
+                error: "Only admin or leader can update roles",
+            });
+        }
+        updateData.role = role;
+    }
+    if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({
+            error: "Nothing to update",
+        });
+    }
+    const updated = await db
+        .update(appUsers)
+        .set(updateData)
+        .where(eq(appUsers.id, req.user.id))
+        .returning();
+    res.json({
+        success: true,
+        message: "Profile updated successfully",
+        user: updated[0],
+    });
+});

@@ -31,3 +31,33 @@ projectsRouter.get("/by-client/:clientId", requireAuth, async (req, res) => {
         .where(eq(projects.clientId, clientId));
     res.json(data);
 });
+// update projects
+projectsRouter.put("/:id", requireAuth, requireAnyRole("consultant", "leader", "admin", "ops"), async (req, res) => {
+    const { id } = req.params;
+    const { name, description, status } = req.body;
+    const updateData = {};
+    if (name !== undefined)
+        updateData.name = name;
+    if (description !== undefined)
+        updateData.description = description;
+    if (status !== undefined)
+        updateData.status = status;
+    if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({
+            error: "No fields provided for update",
+        });
+    }
+    const updated = await db
+        .update(projects)
+        .set(updateData)
+        .where(eq(projects.id, id))
+        .returning();
+    if (!updated.length) {
+        return res.status(404).json({ error: "Project not found" });
+    }
+    res.json({
+        success: true,
+        message: "Project updated successfully",
+        data: updated[0],
+    });
+});

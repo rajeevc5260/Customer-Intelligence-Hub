@@ -41,6 +41,38 @@ clientsRouter.post("/", requireAuth, requireAnyRole("admin", "leader", "ops"), a
     await db.insert(clients).values({ id, name, industry, description });
     res.json({ success: true, id });
 });
+// Update client
+clientsRouter.put("/:id", requireAuth, requireAnyRole("admin", "leader", "ops"), async (req, res) => {
+    const { id } = req.params;
+    const { name, industry, description } = req.body;
+    // Dynamic fields update
+    const updateData = {};
+    if (name !== undefined)
+        updateData.name = name;
+    if (industry !== undefined)
+        updateData.industry = industry;
+    if (description !== undefined)
+        updateData.description = description;
+    if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({
+            error: "No fields provided for update",
+        });
+    }
+    // DB update
+    const updated = await db
+        .update(clients)
+        .set(updateData)
+        .where(eq(clients.id, id))
+        .returning();
+    if (!updated.length) {
+        return res.status(404).json({ error: "Client not found" });
+    }
+    res.json({
+        success: true,
+        message: "Client updated successfully",
+        data: updated[0]
+    });
+});
 // Simple read by id
 clientsRouter.get("/:id", requireAuth, async (req, res) => {
     const { id } = req.params;
