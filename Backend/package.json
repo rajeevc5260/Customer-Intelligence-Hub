@@ -1,0 +1,39 @@
+{
+  "name": "Backend",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "db:push": "drizzle-kit push",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.20.0",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.69.0",
+    "@supabase/supabase-js": "^2.81.1",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^17.2.3",
+    "drizzle-orm": "^0.43.1",
+    "express": "^5.1.0",
+    "pg": "^8.16.3",
+    "postgres": "^3.4.7"
+  },
+  "devDependencies": {
+    "@types/cookie-parser": "^1.4.10",
+    "@types/express": "^5.0.2",
+    "@types/node": "^22.15.21",
+    "dotenv-cli": "^11.0.0",
+    "drizzle-kit": "^0.31.7",
+    "nodemon": "^3.1.11",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}
