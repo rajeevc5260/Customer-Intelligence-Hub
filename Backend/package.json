@@ -20,6 +20,7 @@
     "@anthropic-ai/sdk": "^0.69.0",
     "@supabase/supabase-js": "^2.81.1",
     "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.43.1",
     "express": "^5.1.0",
@@ -28,6 +29,7 @@
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.10",
+    "@types/cors": "^2.8.19",
     "@types/express": "^5.0.2",
     "@types/node": "^22.15.21",
     "dotenv-cli": "^11.0.0",
