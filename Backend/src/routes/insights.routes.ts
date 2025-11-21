@@ -2,7 +2,7 @@ import express from "express";
 import { db } from "../db/drizzle.js";
 import { appUsers, clients, insights } from "../db/schema.js";
 import { requireAuth, requireAnyRole } from "../auth/auth.middleware.js";
-import { desc, eq, sql } from "drizzle-orm";
+import { desc, eq, sql, and } from "drizzle-orm";
 import crypto from "crypto";
 import { enrichInsightWithAI } from "../ai/insightEnrichment.js";
 import { generateOpportunityAndTasksFromInsightBatch } from "../ai/opportunityFromInsight.js";
@@ -11,10 +11,39 @@ export const insightsRouter = express.Router();
 
 // LIST INSIGHTS (optionally by client)
 insightsRouter.get("/", requireAuth, async (req, res) => {
+  const user = req.user!;
+  const role = user.role;
+  const userId = user.id;
+
   const clientId = req.query.clientId as string | undefined;
   const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
 
-  const baseQuery = db
+  // Build dynamic filters
+  let filters: any[] = [];
+
+  // Filter by client if provided
+  if (clientId) {
+    filters.push(eq(insights.clientId, clientId));
+  }
+
+  // Role-based filters
+  if (role === "consultant") {
+    filters.push(eq(insights.authorId, userId));
+  } else if (role === "leader" || role === "manager") {
+    // leaders & managers see all → no filter added
+  } else {
+    // fallback → see only their own
+    filters.push(eq(insights.authorId, userId));
+  }
+
+  // Combine filters into single expression
+  const whereClause =
+    filters.length === 0 ? undefined : filters.length === 1
+      ? filters[0]
+      : and(...filters);
+
+  // Now build final query
+  const query = db
     .select({
       id: insights.id,
       clientId: insights.clientId,
@@ -33,11 +62,12 @@ insightsRouter.get("/", requireAuth, async (req, res) => {
       authorFullName: appUsers.fullName,
     })
     .from(insights)
-    .leftJoin(appUsers, eq(appUsers.id, insights.authorId));
+    .leftJoin(appUsers, eq(appUsers.id, insights.authorId))
+    .where(whereClause)   // <—— TYPE SAFE NOW
+    .orderBy(desc(insights.createdAt))
+    .limit(limit);
 
-  const data = clientId
-    ? await baseQuery.where(eq(insights.clientId, clientId)).orderBy(desc(insights.createdAt)).limit(limit)
-    : await baseQuery.orderBy(desc(insights.createdAt)).limit(limit);
+  const data = await query;
 
   res.json(
     data.map((row) => ({
@@ -69,7 +99,7 @@ insightsRouter.get("/", requireAuth, async (req, res) => {
 insightsRouter.post(
   "/",
   requireAuth,
-  requireAnyRole("consultant", "leader"),
+  requireAnyRole("consultant"),
   async (req, res) => {
     const { clientId, projectId, stakeholderId, rawText } = req.body;
 
@@ -78,7 +108,7 @@ insightsRouter.post(
 
     const id = crypto.randomUUID();
 
-    // 🔥 AI ENRICHMENT
+    // 1) AI ENRICHMENT
     let ai;
     try {
       ai = await enrichInsightWithAI(clientId, rawText);
@@ -89,94 +119,63 @@ insightsRouter.post(
       });
     }
 
-    // Insert enriched insight
-    await db.insert(insights).values({
-      id,
-      authorId: req.user!.id,
-      clientId,
-      projectId: projectId || ai.selectedProjectId || null,
-      stakeholderId: stakeholderId || ai.selectedStakeholderId || null,
-      rawText,
-      summary: ai.summary,
-      themes: ai.themes,
-      timeHorizon: ai.timeHorizon,
-      budgetSignal: ai.budgetSignal,
-      competitorMention: ai.competitorMention,
-      status: "pending",
+    let automationResult: { opportunityId?: string; taskIds?: string[] } = {};
+    let batchTriggered = false;
+    let newCount = 0;
+
+    // 2) Insert + Auto Approve + Batch AI
+    await db.transaction(async (tx) => {
+      // INSERT insight as approved directly
+      await tx.insert(insights).values({
+        id,
+        authorId: req.user!.id,
+        clientId,
+        projectId: projectId || ai.selectedProjectId || null,
+        stakeholderId: stakeholderId || ai.selectedStakeholderId || null,
+        rawText,
+        summary: ai.summary,
+        themes: ai.themes,
+        timeHorizon: ai.timeHorizon,
+        budgetSignal: ai.budgetSignal,
+        competitorMention: ai.competitorMention,
+        status: "approved", // <— AUTO APPROVED HERE
+      });
+
+      // UPDATE APPROVED COUNT AT CLIENT LEVEL
+      const updated = await tx
+        .update(clients)
+        .set({
+          approvedInsightsCount: sql`${clients.approvedInsightsCount} + 1`,
+        })
+        .where(eq(clients.id, clientId))
+        .returning({ count: clients.approvedInsightsCount });
+
+      newCount = updated[0]?.count ?? 0;
+
+      // TRIGGER BATCH AI AFTER EVERY 5 APPROVED INSIGHTS
+      if (newCount % 5 === 0) {
+        const lastFive = await db
+          .select()
+          .from(insights)
+          .where(eq(insights.clientId, clientId))
+          .orderBy(sql`${insights.createdAt} DESC`)
+          .limit(5);
+
+        automationResult = await generateOpportunityAndTasksFromInsightBatch(lastFive);
+        batchTriggered = true;
+      }
     });
 
+    // 3) Final response
     res.json({
       success: true,
       id,
+      autoApproved: true,
+      batchTriggered,
+      batchCount: newCount,
+      opportunityId: automationResult.opportunityId ?? null,
+      taskIds: automationResult.taskIds ?? [],
       data: ai,
     });
   }
 );
-
-// APPROVE INSIGHT + AUTO GENERATE OPPORTUNITY & TASKS
-insightsRouter.post("/:id/approve", requireAuth, async (req, res) => {
-  const { id } = req.params;
-
-  const rows = await db
-    .select()
-    .from(insights)
-    .where(eq(insights.id, id))
-    .limit(1);
-
-  const insight = rows[0];
-  if (!insight) return res.status(404).json({ error: "Not found" });
-
-  if (req.user!.role !== "leader" && insight.authorId !== req.user!.id) {
-    return res
-      .status(403)
-      .json({ error: "Only leader or author can approve" });
-  }
-
-  let automationResult: { opportunityId?: string; taskIds?: string[] } = {};
-  let batchTriggered = false;
-  let newCount = 0;
-
-  await db.transaction(async (tx) => {
-    // 1) Approve insight
-    await tx
-      .update(insights)
-      .set({ status: "approved" })
-      .where(eq(insights.id, id));
-
-    // 2) Atomically increment client's approvedInsightsCount
-    const updated = await tx
-      .update(clients)
-      .set({
-        approvedInsightsCount: sql`${clients.approvedInsightsCount} + 1`,
-      })
-      .where(eq(clients.id, insight.clientId!))
-      .returning({ count: clients.approvedInsightsCount });
-
-    newCount = updated[0]?.count ?? 0;
-
-    // 3) Only trigger for multiples of 5
-    if (newCount % 5 === 0) {
-      console.log("Triggering AI batch for approved insights")
-      const lastFive = await db
-        .select()
-        .from(insights)
-        .where(
-          eq(insights.clientId, insight.clientId!) &&
-          eq(insights.status, "approved")
-        )
-        .orderBy(sql`${insights.createdAt} DESC`)
-        .limit(5);
-
-      automationResult = await generateOpportunityAndTasksFromInsightBatch(lastFive);
-      batchTriggered = true;
-    }
-  });
-
-  res.json({
-    success: true,
-    batchTriggered,
-    batchCount: newCount,
-    opportunityId: automationResult.opportunityId ?? null,
-    taskIds: automationResult.taskIds ?? [],
-  });
-});

@@ -4,7 +4,7 @@ export const appUsers = pgTable("app_users", {
   id: text("id").primaryKey(),       // same as supabase auth user id
   email: text("email").notNull(),
   fullName: text("full_name").notNull(),
-  role: text("role").default("member"), // admin, leader, consultant, etc.
+  role: text("role").default("consultant"), // admin, leader, consultant, etc.
   team: text("team"), // "consulting", "sales", "leader", "manager", etc.
   createdAt: timestamp("created_at").defaultNow(),
 });
