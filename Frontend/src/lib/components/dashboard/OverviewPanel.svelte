@@ -110,7 +110,7 @@
       onclick={() => onNavigate?.('insights')}
       class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700 transition-all text-left group"
     >
-      <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Approved Insights</p>
+      <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Updates</p>
       <p class="mt-2 text-2xl font-bold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
         {loading ? '—' : stats.approvedInsights}
       </p>
@@ -123,7 +123,7 @@
       onclick={() => onNavigate?.('opportunities')}
       class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700 transition-all text-left group"
     >
-      <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Opportunities</p>
+      <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Insights</p>
       <p class="mt-2 text-2xl font-bold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
         {loading ? '—' : stats.opportunities}
       </p>
@@ -185,7 +185,7 @@
       class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700 transition-all text-left"
     >
       <div class="flex items-center justify-between mb-4">
-        <h3 class="text-base font-semibold text-gray-900 dark:text-white">Opportunities</h3>
+        <h3 class="text-base font-semibold text-gray-900 dark:text-white">Insights</h3>
         <span class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Top 5</span>
       </div>
       {#if loading}
@@ -195,7 +195,7 @@
           {/each}
         </div>
       {:else if recentOpportunities.length === 0}
-        <p class="text-xs text-gray-500 dark:text-gray-400">No opportunities yet.</p>
+        <p class="text-xs text-gray-500 dark:text-gray-400">No insights yet.</p>
       {:else}
         <ul class="space-y-3">
           {#each recentOpportunities as opportunity}

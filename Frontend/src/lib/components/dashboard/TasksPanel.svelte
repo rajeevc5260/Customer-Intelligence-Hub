@@ -157,7 +157,7 @@
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
     <div>
       <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Tasks</h2>
-      <p class="text-xs text-gray-500 dark:text-gray-400">Track follow-up work from insights and opportunities</p>
+      <p class="text-xs text-gray-500 dark:text-gray-400">Track follow-up work from updates and insights</p>
     </div>
     <div class="flex items-center gap-2">
       <input
@@ -276,7 +276,7 @@
                         {task.priority}
                       </span>
                     </td>
-                    <td class="px-5 py-4 text-xs text-gray-700 dark:text-gray-300">
+                    <td class="px-5 py-4 text-xs text-gray-700 dark:text-gray-300 text-nowrap">
                       {formatDate(task.dueDate)}
                     </td>
                     <td class="px-5 py-4" onclick={(e) => e.stopPropagation()}>
@@ -376,13 +376,13 @@
                             <div class="grid grid-cols-2 gap-4">
                               {#if task.insightId}
                                 <div>
-                                  <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Insight ID</p>
+                                  <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Update ID</p>
                                   <p class="text-xs font-mono text-gray-700 dark:text-gray-300">{task.insightId}</p>
                                 </div>
                               {/if}
                               {#if task.opportunityId}
                                 <div>
-                                  <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Opportunity ID</p>
+                                  <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Insight ID</p>
                                   <p class="text-xs font-mono text-gray-700 dark:text-gray-300">{task.opportunityId}</p>
                                 </div>
                               {/if}
@@ -475,7 +475,7 @@
           </div>
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label for="task-insight" class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 block">Insight ID</label>
+              <label for="task-insight" class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 block">Update ID</label>
               <input
                 id="task-insight"
                 class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm font-mono"
@@ -483,7 +483,7 @@
               />
             </div>
             <div>
-              <label for="task-opportunity" class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 block">Opportunity ID</label>
+              <label for="task-opportunity" class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 block">Insight ID</label>
               <input
                 id="task-opportunity"
                 class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm font-mono"

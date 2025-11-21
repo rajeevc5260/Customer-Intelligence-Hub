@@ -150,7 +150,7 @@
                   Industry
                 </th>
                 <th class="px-5 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                  Insights
+                  Updates
                 </th>
                 <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                   Actions
@@ -258,7 +258,7 @@
             class="w-full rounded-lg bg-indigo-600 text-white py-2.5 font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors"
             disabled={submitting}
           >
-            {submitting ? 'Saving...' : 'Create Client'}
+            {submitting ? 'Saving...' : 'Add Client'}
           </button>
         </form>
       </div>

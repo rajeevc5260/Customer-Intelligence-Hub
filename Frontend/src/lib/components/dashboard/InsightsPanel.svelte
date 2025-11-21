@@ -20,14 +20,13 @@
   let error = $state('');
   let loadingClients = $state(true);
   let submitting = $state(false);
-  let approvingId = $state<string | null>(null);
   let feedLoading = $state(false);
 
   let insightFeed = $state<Insight[]>([]);
   let lastLoadedContext = $state<string | null>(null);
 
   const userRole = $derived(authStore.user?.role ?? 'member');
-  const canCreateInsights = $derived(userRole === 'consultant');
+  const canCreateUpdates = $derived(userRole === 'consultant');
 
   const timestampFormatter = new Intl.DateTimeFormat('en', {
     dateStyle: 'medium',
@@ -81,7 +80,7 @@
       const data: Insight[] = await api.insights.list({ clientId, limit: 100 });
       insightFeed = data;
     } catch (err: any) {
-      error = err?.message || 'Unable to load insights.';
+      error = err?.message || 'Unable to load updates.';
     } finally {
       feedLoading = false;
     }
@@ -91,8 +90,8 @@
     event.preventDefault();
     if (!selectedClientId) return;
 
-    if (!canCreateInsights) {
-      error = 'Your role cannot submit insights.';
+    if (!canCreateUpdates) {
+      error = 'Your role cannot submit updates.';
       return;
     }
 
@@ -108,40 +107,13 @@
         rawText: createForm.rawText
       });
 
-      message = 'Insight Sent and saved. Awaiting approval.';
+      message = 'Update submitted successfully.';
       createForm = { projectId: '', stakeholderId: '', rawText: '' };
       await loadInsights(selectedClientId);
     } catch (err: any) {
-      error = err?.message || 'Unable to create insight.';
+      error = err?.message || 'Unable to create update.';
     } finally {
       submitting = false;
-    }
-  }
-
-  async function handleApprove(insightId: string) {
-    message = '';
-    error = '';
-    approvingId = insightId;
-
-    try {
-      const response = await api.insights.approve(insightId);
-      message = response.batchTriggered
-        ? 'Insight approved and automation triggered.'
-        : 'Insight approved.';
-
-      insightFeed = insightFeed.map((insight) =>
-        insight.id === insightId
-          ? {
-              ...insight,
-              status: 'approved',
-              // preserve other fields
-            }
-          : insight
-      );
-    } catch (err: any) {
-      error = err?.message || 'Unable to approve insight.';
-    } finally {
-      approvingId = null;
     }
   }
 
@@ -184,9 +156,9 @@
 
 <section class="space-y-6">
   <div>
-    <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Insights</h2>
+    <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Updates</h2>
     <p class="text-sm text-gray-500 dark:text-gray-400">
-      Capture consultant intelligence and trigger AI Enrichment
+      Share inputs, news, and updates from client interactions and field work
     </p>
   </div>
 
@@ -203,10 +175,10 @@
   {/if}
 
   <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-    <div class="xl:col-span-2 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm flex flex-col gap-4">
+    <div class="xl:col-span-2 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm flex flex-col gap-4 {canCreateUpdates ? 'xl:col-span-2' : 'xl:col-span-3'}">
       <div class="flex items-center justify-between">
         <div>
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Insight Stream</h3>
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Updates Feed</h3>
           <p class="text-sm text-gray-500 dark:text-gray-400">
             Everyone on the same client sees the same feed in real time.
           </p>
@@ -230,7 +202,7 @@
           {/each}
         {:else if !insightFeed.length}
           <div class="rounded-2xl border border-dashed border-gray-300 dark:border-gray-700 p-6 text-center text-sm text-gray-500 dark:text-gray-400">
-            No insights yet for this client. Capture one using the form on the right.
+            No updates yet for this client. Share one using the form on the right.
           </div>
         {:else}
           {#each insightFeed as insight}
@@ -247,32 +219,6 @@
                     <p class="text-xs text-gray-500 dark:text-gray-400">
                       {timestampFormatter.format(new Date(insight.createdAt))}
                     </p>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <span
-                      class={`text-xs font-semibold uppercase tracking-wide ${
-                        insight.status === 'approved'
-                          ? 'text-emerald-600 dark:text-emerald-300'
-                          : 'text-amber-600 dark:text-amber-300'
-                      }`}
-                    >
-                      {insight.status}
-                    </span>
-                    <button
-                      class={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                        insight.status === 'approved'
-                          ? 'border-gray-300 dark:border-gray-700 text-gray-400 cursor-not-allowed'
-                          : 'border-emerald-500 text-emerald-600 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/30'
-                      }`}
-                      title="Approve insight"
-                      onclick={() => handleApprove(insight.id)}
-                      disabled={insight.status === 'approved' || approvingId === insight.id}
-                    >
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                      </svg>
-                      {approvingId === insight.id ? 'Approving...' : 'Approve'}
-                    </button>
                   </div>
                 </div>
 
@@ -300,10 +246,10 @@
       </div>
     </div>
 
-    {#if canCreateInsights}
+    {#if canCreateUpdates}
       <div class="space-y-6">
         <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm space-y-4">
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Create Insight</h3>
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Share Update</h3>
           <form class="space-y-4" onsubmit={handleCreate}>
             <div class="grid grid-cols-1 gap-4">
               <div class="md:col-span-1">
@@ -356,12 +302,12 @@
             </div>
 
             <div>
-              <label for="insight-raw" class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Raw notes</label>
+              <label for="insight-raw" class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Update Details</label>
               <textarea
                 id="insight-raw"
                 rows="6"
                 class="w-full rounded-2xl border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                placeholder="Paste call notes and context..."
+                placeholder="Share news, updates, call notes, or any relevant information..."
                 required
                 bind:value={createForm.rawText}
               ></textarea>
@@ -372,12 +318,9 @@
               class="w-full rounded-xl bg-indigo-600 text-white py-3 font-semibold hover:bg-indigo-700 disabled:opacity-50 transition-colors"
               disabled={submitting || !selectedClientId}
             >
-              {submitting ? 'Sending...' : 'Send Insight'}
+              {submitting ? 'Submitting...' : 'Share Update'}
             </button>
           </form>
-          <p class="text-xs text-gray-500 dark:text-gray-400">
-            Approved insights every 5 submissions per client still auto-create opportunities and tasks.
-          </p>
         </div>
       </div>
     {/if}

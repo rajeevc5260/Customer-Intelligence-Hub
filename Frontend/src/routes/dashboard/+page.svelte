@@ -22,8 +22,8 @@
     { id: 'overview', label: 'Overview' },
     { id: 'clients', label: 'Clients' },
     { id: 'relationships', label: 'Stakeholders & Projects' },
-    { id: 'insights', label: 'Insights' },
-    { id: 'opportunities', label: 'Opportunities' },
+    { id: 'insights', label: 'Updates' },
+    { id: 'opportunities', label: 'Insights' },
     { id: 'tasks', label: 'Tasks' },
     { id: 'campaigns', label: 'Campaigns' },
     { id: 'users', label: 'Users' }
@@ -115,7 +115,7 @@
             </div>
             <!-- <div class="rounded-2xl border border-dashed border-gray-200 dark:border-gray-700 p-4 text-sm text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800/50">
               <p class="font-medium text-gray-900 dark:text-white mb-1">How to use this hub</p>
-              <p>Use the sections below to manage clients, enrich insights, track opportunities, and run field campaigns in one place.</p>
+              <p>Use the sections below to manage clients, track updates, generate insights, and run field campaigns in one place.</p>
             </div> -->
           </div>
         </div>

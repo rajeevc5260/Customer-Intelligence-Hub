@@ -40,7 +40,7 @@
       page = response.page;
       totalPages = response.totalPages;
     } catch (err: any) {
-      error = err?.message || 'Unable to load opportunities.';
+      error = err?.message || 'Unable to load insights.';
     } finally {
       loading = false;
     }
@@ -88,11 +88,11 @@
         description: form.description || undefined,
         valueEstimate: form.valueEstimate || undefined
       });
-      message = 'Opportunity created.';
+      message = 'Insight created.';
       form = { clientId: form.clientId, insightId: '', title: '', description: '', valueEstimate: '' };
       await loadOpportunities(page);
     } catch (err: any) {
-      error = err?.message || 'Unable to create opportunity.';
+      error = err?.message || 'Unable to create insight.';
     } finally {
       submitting = false;
     }
@@ -107,8 +107,8 @@
 <section class="space-y-6">
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
     <div>
-      <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Opportunities</h2>
-      <p class="text-xs text-gray-500 dark:text-gray-400">Track revenue motions generated from insights</p>
+      <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Insights</h2>
+      <p class="text-xs text-gray-500 dark:text-gray-400">Track revenue opportunities and sales motions generated from field updates</p>
     </div>
     <div class="flex items-center gap-2">
       <input
@@ -145,7 +145,7 @@
             <thead class="bg-gray-50 dark:bg-gray-800/50">
               <tr>
                 <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                  Opportunity
+                  Insight
                 </th>
                 <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                   Client
@@ -170,7 +170,7 @@
               {:else if opportunities.length === 0}
                 <tr>
                   <td colspan="4" class="px-5 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
-                    No opportunities found.
+                    No insights found.
                   </td>
                 </tr>
               {:else}
