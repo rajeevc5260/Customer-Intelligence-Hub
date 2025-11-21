@@ -73,6 +73,7 @@ export interface Task {
 
 export interface Campaign {
   id: string;
+  createdBy: string;
   topic: string;
   description: string | null;
   questions: string | null;

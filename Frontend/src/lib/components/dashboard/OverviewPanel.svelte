@@ -220,7 +220,7 @@
 
     <button
       onclick={() => onNavigate?.('campaigns')}
-      class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700 transition-all text-left"
+      class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700 transition-all text-left h-fit"
     >
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-base font-semibold text-gray-900 dark:text-white">Campaigns</h3>

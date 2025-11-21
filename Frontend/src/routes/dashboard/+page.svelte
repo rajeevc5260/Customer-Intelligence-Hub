@@ -14,7 +14,10 @@
   let showInviteDialog = $state(false);
   let activeSection = $state('overview');
 
-  const sections = [
+  const userRole = $derived(authStore.user?.role ?? 'member');
+
+  // Filter sections based on role
+  const allSections = [
     { id: 'overview', label: 'Overview' },
     { id: 'clients', label: 'Clients' },
     { id: 'relationships', label: 'Stakeholders & Projects' },
@@ -24,9 +27,40 @@
     { id: 'campaigns', label: 'Campaigns' }
   ];
 
+  const sections = $derived(() => {
+    if (userRole === 'consultant') {
+      // Consultant: only insights, campaigns, and clients
+      return allSections.filter(s => 
+        ['insights', 'campaigns', 'clients'].includes(s.id)
+      );
+    } else if (userRole === "manager"){
+      return allSections.filter(s => 
+        ['tasks', 'relationships', 'opportunities' ,'insights', 'campaigns', 'clients', ].includes(s.id)
+      );
+    } else if (userRole === "admin"){
+      return allSections.filter(s => 
+        ['relationships', 'clients', ].includes(s.id)
+      );
+    } else if ( userRole === 'leader') {
+      // Manager, leader, and admin: see everything
+      return allSections;
+    } else {
+      // Default: see everything (fallback)
+      return allSections;
+    }
+  });
+
   $effect(() => {
     if (!authStore.loading && !authStore.user) {
       goto('/auth');
+    }
+  });
+
+  // Reset active section if current one is not available for user's role
+  $effect(() => {
+    const availableSections = sections();
+    if (availableSections.length > 0 && !availableSections.find(s => s.id === activeSection)) {
+      activeSection = availableSections[0].id;
     }
   });
 </script>
@@ -86,7 +120,7 @@
 
         <div class="rounded-3xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm overflow-x-auto">
           <div class="flex items-center gap-2 min-w-max">
-            {#each sections as section}
+            {#each sections() as section}
               <button
                 class="px-4 py-2 rounded-2xl text-sm font-medium transition-colors {activeSection === section.id ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'}"
                 onclick={() => activeSection = section.id}

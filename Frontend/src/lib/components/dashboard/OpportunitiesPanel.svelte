@@ -137,8 +137,8 @@
     </div>
   {/if}
 
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <div class="lg:col-span-2 space-y-4">
+  <div class="grid grid-cols-1 gap-6">
+    <div class="space-y-4">
       <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
           <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
@@ -234,68 +234,6 @@
           </button>
         </div>
       </div>
-    </div>
-
-    <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 shadow-sm">
-      <h3 class="text-base font-semibold text-gray-900 dark:text-white mb-4">Create Opportunity</h3>
-      <form class="space-y-3" onsubmit={handleCreate}>
-        <div>
-          <label for="opportunity-client" class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 block">Client</label>
-          <select
-            id="opportunity-client"
-            class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
-            required
-            bind:value={form.clientId}
-          >
-            <option value="" disabled>Select client</option>
-            {#each clients as client}
-              <option value={client.id}>{client.name}</option>
-            {/each}
-          </select>
-        </div>
-        <div>
-          <label for="opportunity-insight" class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 block">Insight ID (optional)</label>
-          <input
-            id="opportunity-insight"
-            class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm font-mono"
-            bind:value={form.insightId}
-          />
-        </div>
-        <div>
-          <label for="opportunity-title" class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 block">Title</label>
-          <input
-            id="opportunity-title"
-            class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
-            required
-            bind:value={form.title}
-          />
-        </div>
-        <div>
-          <label for="opportunity-description" class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 block">Description</label>
-          <textarea
-            id="opportunity-description"
-            rows="3"
-            class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
-            bind:value={form.description}
-          ></textarea>
-        </div>
-        <div>
-          <label for="opportunity-value-estimate" class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 block">Value estimate</label>
-          <input
-            id="opportunity-value-estimate"
-            class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
-            placeholder="$250K"
-            bind:value={form.valueEstimate}
-          />
-        </div>
-        <button
-          type="submit"
-          class="w-full rounded-lg bg-indigo-600 text-white py-2 text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-          disabled={submitting}
-        >
-          {submitting ? 'Creating...' : 'Save Opportunity'}
-        </button>
-      </form>
     </div>
   </div>
 </section>

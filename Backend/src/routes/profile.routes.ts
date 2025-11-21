@@ -1,5 +1,5 @@
 import express from "express";
-import { requireAuth } from "../auth/auth.middleware.js";
+import { requireAnyRole, requireAuth } from "../auth/auth.middleware.js";
 import { db } from "../db/drizzle.js";
 import { appUsers } from "../db/schema.js";
 import { eq } from "drizzle-orm";
@@ -17,7 +17,7 @@ profileRouter.get("/", requireAuth, async (req, res) => {
 });
 
 // Update profile
-profileRouter.put("/", requireAuth, async (req, res) => {
+profileRouter.put("/", requireAuth, requireAnyRole("admin"), async (req, res) => {
   const { fullName, team, role } = req.body;
 
   const updateData: any = {};

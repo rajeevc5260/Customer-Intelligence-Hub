@@ -31,9 +31,13 @@
   });
 
   const userRole = $derived(authStore.user?.role ?? 'member');
-  const canManageCampaigns = $derived(['leader', 'admin', 'ops'].includes(userRole));
-  const canRespond = $derived(['consultant', 'leader', 'admin', 'ops'].includes(userRole));
-  const canViewResponses = $derived(['leader', 'admin', 'executive'].includes(userRole));
+  const userId = $derived(authStore.user?.id ?? null);
+  // Only manager and leader can launch campaigns
+  const canManageCampaigns = $derived(['manager', 'leader'].includes(userRole));
+  // Only consultants can submit responses
+  const canRespond = $derived(userRole === 'consultant');
+  // Leaders can see all responses, managers see only their campaigns' responses, consultants see only their own
+  const canViewResponses = $derived(['leader', 'manager', 'consultant'].includes(userRole));
 
   async function loadCampaigns() {
     loadingCampaigns = true;
@@ -63,20 +67,42 @@
 
     if (!canViewResponses) {
       responses = [];
-      responsesInfo = 'Your role can submit responses but cannot view others on this campaign.';
+      responsesInfo = 'Your role cannot view responses.';
       loadingResponses = false;
       return;
     }
 
     try {
       const data = await api.campaigns.responses(campaignId);
-      responses = data;
-      responsesInfo = '';
+      
+      // Filter responses based on role
+      if (userRole === 'consultant') {
+        // Consultants see only their own responses
+        responses = data.filter((r: any) => r.userId === userId);
+        responsesInfo = responses.length === 0 
+          ? 'You have not submitted any responses to this campaign yet.'
+          : '';
+      } else if (userRole === 'manager') {
+        // Managers see only responses from campaigns they created
+        const campaign = campaigns.find(c => c.id === campaignId);
+        if (campaign && campaign.createdBy === userId) {
+          responses = data;
+          responsesInfo = '';
+        } else {
+          responses = [];
+          responsesInfo = 'You can only view responses for campaigns you created.';
+        }
+      } else if (userRole === 'leader') {
+        // Leaders see everything
+        responses = data;
+        responsesInfo = '';
+      } else {
+        responses = [];
+        responsesInfo = 'Your role cannot view responses.';
+      }
     } catch (err: any) {
-      // Some roles cannot view responses; show soft message
       responses = [];
-      responsesInfo =
-        err?.message || 'Unable to load responses (requires leader, admin, or executive access).';
+      responsesInfo = err?.message || 'Unable to load responses.';
     } finally {
       loadingResponses = false;
     }
@@ -290,9 +316,9 @@
               <div class="h-20 rounded-lg bg-gray-100 dark:bg-gray-800 animate-pulse"></div>
             {/each}
           </div>
-        {:else if !canViewResponses}
+        {:else if !canViewResponses || responses.length === 0}
           <p class="text-xs text-gray-500 dark:text-gray-400 py-4 text-center">
-            {responsesInfo || 'You can respond to campaigns but cannot view the response feed.'}
+            {responsesInfo || 'No responses available to view.'}
           </p>
         {:else if responses.length === 0}
           <p class="text-xs text-gray-500 dark:text-gray-400 py-4 text-center">
@@ -328,10 +354,10 @@
       </div>
     </div>
 
-    <div class="space-y-6">
-      <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 shadow-sm">
-        <h3 class="text-base font-semibold text-gray-900 dark:text-white mb-4">Launch Campaign</h3>
-        {#if canManageCampaigns}
+    {#if canManageCampaigns}
+      <div class="space-y-6">
+        <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 shadow-sm">
+          <h3 class="text-base font-semibold text-gray-900 dark:text-white mb-4">Launch Campaign</h3>
           <form class="space-y-3" onsubmit={handleCreateCampaign}>
             <div>
               <label for="campaign-topic" class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 block">Topic</label>
@@ -376,16 +402,14 @@
               {submittingCampaign ? 'Launching...' : 'Create Campaign'}
             </button>
           </form>
-        {:else}
-          <p class="text-xs text-gray-500 dark:text-gray-400">
-            You can review active campaigns, but only leaders, admins, or ops can launch new ones.
-          </p>
-        {/if}
+        </div>
       </div>
+    {/if}
 
-      <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 shadow-sm">
-        <h3 class="text-base font-semibold text-gray-900 dark:text-white mb-4">Submit Response</h3>
-        {#if canRespond}
+    {#if canRespond}
+      <div class="space-y-6">
+        <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 shadow-sm">
+          <h3 class="text-base font-semibold text-gray-900 dark:text-white mb-4">Submit Response</h3>
           <form class="space-y-3" onsubmit={handleRespond}>
             <div>
               <label for="campaign-client" class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 block">Client</label>
@@ -424,13 +448,9 @@
               💡 Every 5th response triggers AI promotion into opportunities & tasks
             </p>
           </div>
-        {:else}
-          <p class="text-xs text-gray-500 dark:text-gray-400">
-            Your role can observe campaign outcomes, but only consultants or leaders can submit responses.
-          </p>
-        {/if}
+        </div>
       </div>
-    </div>
+    {/if}
   </div>
 </section>
 

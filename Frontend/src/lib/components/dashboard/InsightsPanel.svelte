@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { api } from '$lib/api';
+  import { authStore } from '$lib/stores/auth.svelte';
   import type { Client, Insight, Project, Stakeholder } from '$lib/types';
 
   let clients = $state<Client[]>([]);
@@ -24,6 +25,9 @@
 
   let insightFeed = $state<Insight[]>([]);
   let lastLoadedContext = $state<string | null>(null);
+
+  const userRole = $derived(authStore.user?.role ?? 'member');
+  const canCreateInsights = $derived(userRole === 'consultant');
 
   const timestampFormatter = new Intl.DateTimeFormat('en', {
     dateStyle: 'medium',
@@ -86,6 +90,11 @@
   async function handleCreate(event: SubmitEvent) {
     event.preventDefault();
     if (!selectedClientId) return;
+
+    if (!canCreateInsights) {
+      error = 'Your role cannot submit insights.';
+      return;
+    }
 
     submitting = true;
     message = '';
@@ -291,84 +300,86 @@
       </div>
     </div>
 
-    <div class="space-y-6">
-      <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm space-y-4">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Create Insight</h3>
-        <form class="space-y-4" onsubmit={handleCreate}>
-          <div class="grid grid-cols-1 gap-4">
-            <div class="md:col-span-1">
-              <label for="insight-client" class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Client</label>
-              <select
-                id="insight-client"
-                class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                bind:value={selectedClientId}
-                disabled={loadingClients}
-              >
-                {#if loadingClients}
-                  <option>Loading...</option>
-                {:else if clients.length === 0}
-                  <option>No clients found</option>
-                {:else}
-                  {#each clients as client}
-                    <option value={client.id}>{client.name}</option>
+    {#if canCreateInsights}
+      <div class="space-y-6">
+        <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm space-y-4">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Create Insight</h3>
+          <form class="space-y-4" onsubmit={handleCreate}>
+            <div class="grid grid-cols-1 gap-4">
+              <div class="md:col-span-1">
+                <label for="insight-client" class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Client</label>
+                <select
+                  id="insight-client"
+                  class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  bind:value={selectedClientId}
+                  disabled={loadingClients}
+                >
+                  {#if loadingClients}
+                    <option>Loading...</option>
+                  {:else if clients.length === 0}
+                    <option>No clients found</option>
+                  {:else}
+                    {#each clients as client}
+                      <option value={client.id}>{client.name}</option>
+                    {/each}
+                  {/if}
+                </select>
+              </div>
+              <div>
+                <label for="insight-project" class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Project</label>
+                <select
+                  id="insight-project"
+                  class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  bind:value={createForm.projectId}
+                  disabled={contextLoading}
+                >
+                  <option value="">Auto-detect</option>
+                  {#each projects as project}
+                    <option value={project.id}>{project.name}</option>
                   {/each}
-                {/if}
-              </select>
+                </select>
+              </div>
+              <div>
+                <label for="insight-stakeholder" class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Stakeholder</label>
+                <select
+                  id="insight-stakeholder"
+                  class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  bind:value={createForm.stakeholderId}
+                  disabled={contextLoading}
+                >
+                  <option value="">Auto-detect</option>
+                  {#each stakeholders as stakeholder}
+                    <option value={stakeholder.id}>{stakeholder.name}</option>
+                  {/each}
+                </select>
+              </div>
             </div>
-            <div>
-              <label for="insight-project" class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Project</label>
-              <select
-                id="insight-project"
-                class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                bind:value={createForm.projectId}
-                disabled={contextLoading}
-              >
-                <option value="">Auto-detect</option>
-                {#each projects as project}
-                  <option value={project.id}>{project.name}</option>
-                {/each}
-              </select>
-            </div>
-            <div>
-              <label for="insight-stakeholder" class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Stakeholder</label>
-              <select
-                id="insight-stakeholder"
-                class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                bind:value={createForm.stakeholderId}
-                disabled={contextLoading}
-              >
-                <option value="">Auto-detect</option>
-                {#each stakeholders as stakeholder}
-                  <option value={stakeholder.id}>{stakeholder.name}</option>
-                {/each}
-              </select>
-            </div>
-          </div>
 
-          <div>
-            <label for="insight-raw" class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Raw notes</label>
-            <textarea
-              id="insight-raw"
-              rows="6"
-              class="w-full rounded-2xl border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-              placeholder="Paste call notes and context..."
-              required
-              bind:value={createForm.rawText}
-            ></textarea>
-          </div>
+            <div>
+              <label for="insight-raw" class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Raw notes</label>
+              <textarea
+                id="insight-raw"
+                rows="6"
+                class="w-full rounded-2xl border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                placeholder="Paste call notes and context..."
+                required
+                bind:value={createForm.rawText}
+              ></textarea>
+            </div>
 
-          <button
-            type="submit"
-            class="w-full rounded-xl bg-indigo-600 text-white py-3 font-semibold hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-            disabled={submitting || !selectedClientId}
-          >
-            {submitting ? 'Sending...' : 'Send Insight'}
-          </button>
-        </form>
-        <p class="text-xs text-gray-500 dark:text-gray-400">
-          Approved insights every 5 submissions per client still auto-create opportunities and tasks.
-        </p>
+            <button
+              type="submit"
+              class="w-full rounded-xl bg-indigo-600 text-white py-3 font-semibold hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+              disabled={submitting || !selectedClientId}
+            >
+              {submitting ? 'Sending...' : 'Send Insight'}
+            </button>
+          </form>
+          <p class="text-xs text-gray-500 dark:text-gray-400">
+            Approved insights every 5 submissions per client still auto-create opportunities and tasks.
+          </p>
+        </div>
       </div>
-    </div>
+    {/if}
   </div>
 </section>

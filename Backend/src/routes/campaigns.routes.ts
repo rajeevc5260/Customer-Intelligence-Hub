@@ -7,7 +7,7 @@ import {
     clients,
 } from "../db/schema.js";
 import { requireAuth, requireAnyRole } from "../auth/auth.middleware.js";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql, and } from "drizzle-orm";
 import crypto from "node:crypto";
 import { enrichCampaignResponse } from "../ai/campaignEnrichment.js";
 import { generateOpportunityAndTasksFromCampaignBatch, } from "../ai/opportunityFromCampaign.js";
@@ -145,18 +145,51 @@ campaignsRouter.post(
     }
 );
 
-// List responses for a campaign (leaders/exec/admin)
+// List responses for a campaign (role-based filtering)
 campaignsRouter.get(
     "/:id/responses",
     requireAuth,
-    requireAnyRole("leader", "admin", "executive"),
+    requireAnyRole("leader", "admin", "manager", "consultant"),
     async (req, res) => {
         const { id } = req.params;
+        const user = req.user!;
+        const userRole = user.role;
+        const userId = user.id;
 
+        // First, get the campaign to check createdBy
+        const campaign = await db
+            .select()
+            .from(campaigns)
+            .where(eq(campaigns.id, id))
+            .limit(1);
+
+        if (!campaign[0]) {
+            return res.status(404).json({ error: "Campaign not found" });
+        }
+
+        // Build filters based on role
+        const filters = [eq(campaignResponses.campaignId, id)];
+
+        if (userRole === "consultant") {
+            // Consultants see only their own responses
+            filters.push(eq(campaignResponses.userId, userId));
+        } else if (userRole === "manager") {
+            // Managers see only responses from campaigns they created
+            if (campaign[0].createdBy !== userId) {
+                return res.json([]); // Return empty array if not the creator
+            }
+            // No additional filter needed - already filtered by campaignId
+        } else if (userRole === "leader" || userRole === "admin") {
+            // Leaders and admins see all responses
+            // No additional filter needed
+        }
+
+        // Build final query
+        const whereClause = filters.length === 1 ? filters[0] : and(...filters);
         const data = await db
             .select()
             .from(campaignResponses)
-            .where(eq(campaignResponses.campaignId, id))
+            .where(whereClause)
             .orderBy(campaignResponses.createdAt);
 
         res.json(data);
