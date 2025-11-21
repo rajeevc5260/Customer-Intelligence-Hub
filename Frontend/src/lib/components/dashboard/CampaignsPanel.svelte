@@ -14,6 +14,8 @@
   let submittingResponse = $state(false);
   let updatingStatus = $state<string | null>(null);
   let deletingCampaign = $state<string | null>(null);
+  let showDeleteConfirm = $state(false);
+  let campaignToDelete = $state<string | null>(null);
   let message = $state('');
   let error = $state('');
   let expandedQuestions = $state<Set<string>>(new Set());
@@ -269,29 +271,39 @@
     }
   }
 
-  async function handleDeleteCampaign(campaignId: string, event: Event) {
+  function openDeleteConfirm(campaignId: string, event: Event) {
     event.stopPropagation();
-    if (!confirm('Are you sure you want to delete this campaign? This action cannot be undone.')) {
-      return;
-    }
+    campaignToDelete = campaignId;
+    showDeleteConfirm = true;
+  }
 
-    if (!canUpdateCampaign(campaigns.find(c => c.id === campaignId)!)) {
+  function closeDeleteConfirm() {
+    showDeleteConfirm = false;
+    campaignToDelete = null;
+  }
+
+  async function handleDeleteCampaign() {
+    if (!campaignToDelete) return;
+
+    if (!canUpdateCampaign(campaigns.find(c => c.id === campaignToDelete)!)) {
       error = 'You do not have permission to delete this campaign.';
+      closeDeleteConfirm();
       return;
     }
 
-    deletingCampaign = campaignId;
+    deletingCampaign = campaignToDelete;
     message = '';
     error = '';
 
     try {
-      await api.campaigns.delete(campaignId);
+      await api.campaigns.delete(campaignToDelete);
       message = 'Campaign deleted successfully.';
-      if (selectedCampaignId === campaignId) {
+      if (selectedCampaignId === campaignToDelete) {
         selectedCampaignId = null;
         responses = [];
       }
       await loadCampaigns();
+      closeDeleteConfirm();
     } catch (err: any) {
       error = err?.message || 'Unable to delete campaign.';
     } finally {
@@ -356,71 +368,70 @@
               <div
                 class="rounded-lg border px-4 py-3 transition-all {selectedCampaignId === campaign.id ? 'border-indigo-500 bg-indigo-50 dark:border-indigo-400 dark:bg-indigo-900/20 shadow-sm' : 'border-gray-200 dark:border-gray-800'}"
               >
-                <button
-                  class="w-full text-left"
-                  onclick={() => handleSelectCampaign(campaign.id)}
-                >
-                  <div class="flex items-start justify-between gap-2">
-                    <div class="flex-1">
-                      <div class="flex items-center gap-2">
-                        <p class="text-sm font-semibold text-gray-900 dark:text-white">{campaign.topic}</p>
-                        <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium {
-                          campaign.status === 'active' 
-                            ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300' 
-                            : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
-                        }">
-                          {campaign.status}
-                        </span>
-                      </div>
-                      <span class="text-xs text-gray-500 dark:text-gray-400">
-                        {new Date(campaign.createdAt).toLocaleDateString()}
+                <div class="flex items-start justify-between gap-2">
+                  <button
+                    class="flex-1 text-left"
+                    onclick={() => handleSelectCampaign(campaign.id)}
+                  >
+                    <div class="flex items-center gap-2">
+                      <p class="text-sm font-semibold text-gray-900 dark:text-white">{campaign.topic}</p>
+                      <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium {
+                        campaign.status === 'active' 
+                          ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300' 
+                          : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
+                      }">
+                        {campaign.status}
                       </span>
                     </div>
-                    {#if canUpdateCampaign(campaign)}
-                      <div class="flex items-center gap-1" onclick={(e) => e.stopPropagation()}>
-                        <select
-                          class="text-xs rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-2 py-1 w-20"
-                          value={campaign.status}
-                          onchange={(e) => handleUpdateStatus(campaign.id, (e.target as HTMLSelectElement).value, e)}
-                          disabled={updatingStatus === campaign.id}
-                          onclick={(e) => e.stopPropagation()}
-                        >
-                          <option value="active">Active</option>
-                          <option value="closed">Closed</option>
-                        </select>
-                        <button
-                          class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 p-1"
-                          onclick={(e) => handleDeleteCampaign(campaign.id, e)}
-                          disabled={deletingCampaign === campaign.id}
-                          title="Delete campaign"
-                        >
-                          {#if deletingCampaign === campaign.id}
-                            <svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                            </svg>
-                          {:else}
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                            </svg>
-                          {/if}
-                        </button>
-                      </div>
-                    {/if}
-                  </div>
-                  {#if campaign.description}
-                    <p class="text-xs text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">
-                      {campaign.description}
-                    </p>
-                  {/if}
-                  <div class="mt-2 flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
-                    <span class="inline-flex items-center gap-1">
-                      <span class="font-semibold text-indigo-600 dark:text-indigo-400">{campaign.responseCount}</span>
-                      responses
+                    <span class="text-xs text-gray-500 dark:text-gray-400">
+                      {new Date(campaign.createdAt).toLocaleDateString()}
                     </span>
-                    <span>•</span>
-                    <span>{getQuestionCount(campaign.questions)} questions</span>
-                  </div>
-                </button>
+                    {#if campaign.description}
+                      <p class="text-xs text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">
+                        {campaign.description}
+                      </p>
+                    {/if}
+                    <div class="mt-2 flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                      <span class="inline-flex items-center gap-1">
+                        <span class="font-semibold text-indigo-600 dark:text-indigo-400">{campaign.responseCount}</span>
+                        responses
+                      </span>
+                      <span>•</span>
+                      <span>{getQuestionCount(campaign.questions)} questions</span>
+                    </div>
+                  </button>
+                  {#if canUpdateCampaign(campaign)}
+                    <div class="flex items-center gap-1 shrink-0">
+                      <select
+                        class="text-xs rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-2 py-1 w-20"
+                        value={campaign.status}
+                        onchange={(e) => handleUpdateStatus(campaign.id, (e.target as HTMLSelectElement).value, e)}
+                        disabled={updatingStatus === campaign.id}
+                        onclick={(e) => e.stopPropagation()}
+                      >
+                        <option value="active">Active</option>
+                        <option value="closed">Closed</option>
+                      </select>
+                      <button
+                        class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 p-1"
+                        onclick={(e) => openDeleteConfirm(campaign.id, e)}
+                        disabled={deletingCampaign === campaign.id}
+                        title="Delete campaign"
+                        type="button"
+                      >
+                        {#if deletingCampaign === campaign.id}
+                          <svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                          </svg>
+                        {:else}
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                          </svg>
+                        {/if}
+                      </button>
+                    </div>
+                  {/if}
+                </div>
                 {#if getQuestionCount(campaign.questions) > 0}
                   <div class="mt-2 flex justify-end">
                     <button
@@ -603,5 +614,80 @@
       </div>
     {/if}
   </div>
+
+  {#if showDeleteConfirm}
+    <div class="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true">
+      <div class="flex min-h-screen items-center justify-center p-4">
+        <div 
+          class="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" 
+          role="button"
+          tabindex="0"
+          onclick={closeDeleteConfirm}
+          onkeydown={(e) => e.key === 'Escape' && closeDeleteConfirm()}
+        ></div>
+        
+        <div 
+          class="relative bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 w-full max-w-md"
+          role="dialog"
+          aria-modal="true"
+          tabindex="-1"
+          onclick={(e) => e.stopPropagation()}
+        >
+          <div class="flex items-center gap-3 mb-4">
+            <div class="flex-shrink-0 w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+              <svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+              </svg>
+            </div>
+            <div class="flex-1">
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Delete Campaign</h3>
+              <p class="text-sm text-gray-500 dark:text-gray-400">This action cannot be undone.</p>
+            </div>
+            <button
+              onclick={closeDeleteConfirm}
+              class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              aria-label="Close dialog"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+
+          {#if campaignToDelete}
+            {@const campaign = campaigns.find(c => c.id === campaignToDelete)}
+            {#if campaign}
+              <div class="mb-4 p-3 rounded-lg bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700">
+                <p class="text-sm font-medium text-gray-900 dark:text-white mb-1">{campaign.topic}</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">
+                  {campaign.responseCount} response{campaign.responseCount !== 1 ? 's' : ''} will be deleted
+                </p>
+              </div>
+            {/if}
+          {/if}
+
+          <p class="text-sm text-gray-700 dark:text-gray-300 mb-6">
+            Are you sure you want to delete this campaign? This will permanently remove the campaign, all responses, and all associated data. This action cannot be undone.
+          </p>
+
+          <div class="flex items-center justify-end gap-3">
+            <button
+              onclick={closeDeleteConfirm}
+              class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onclick={handleDeleteCampaign}
+              disabled={deletingCampaign !== null}
+              class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {deletingCampaign ? 'Deleting...' : 'Delete Campaign'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  {/if}
 </section>
 

@@ -5,7 +5,8 @@
   import type { Client, Insight, Project, Stakeholder } from '$lib/types';
 
   let clients = $state<Client[]>([]);
-  let selectedClientId = $state<string | null>(null);
+  let viewingClientId = $state<string | null>(null); // Client whose updates are shown in feed
+  let selectedClientId = $state<string | null>(null); // Client selected in form for creating updates
   let stakeholders = $state<Stakeholder[]>([]);
   let projects = $state<Project[]>([]);
   let contextLoading = $state(false);
@@ -39,6 +40,7 @@
       const res = await api.clients.list(1, 100);
       clients = res.data;
       if (res.data.length > 0) {
+        viewingClientId = res.data[0].id;
         selectedClientId = res.data[0].id;
       }
     } catch (err: any) {
@@ -109,7 +111,10 @@
 
       message = 'Update submitted successfully.';
       createForm = { projectId: '', stakeholderId: '', rawText: '' };
-      await loadInsights(selectedClientId);
+      // Reload the viewing client's feed if it matches the created update's client
+      if (viewingClientId === selectedClientId) {
+        await loadInsights(viewingClientId);
+      }
     } catch (err: any) {
       error = err?.message || 'Unable to create update.';
     } finally {
@@ -117,14 +122,26 @@
     }
   }
 
+  async function handleViewingClientChange(newClientId: string) {
+    viewingClientId = newClientId;
+    await loadInsights(viewingClientId);
+  }
+
+  // Effect for viewing client - controls the feed
+  $effect(() => {
+    if (viewingClientId) {
+      loadInsights(viewingClientId);
+    } else {
+      insightFeed = [];
+    }
+  });
+
+  // Effect for form client - only loads context for creating updates
   $effect(() => {
     if (selectedClientId) {
       createForm.projectId = '';
       createForm.stakeholderId = '';
       loadClientContext(selectedClientId);
-      loadInsights(selectedClientId);
-    } else {
-      insightFeed = [];
     }
   });
 
@@ -183,13 +200,31 @@
             Everyone on the same client sees the same feed in real time.
           </p>
         </div>
-        <button
-          class="inline-flex items-center gap-2 rounded-lg border border-gray-300 dark:border-gray-700 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-          onclick={() => loadInsights(selectedClientId)}
-          disabled={feedLoading}
-        >
-          Refresh
-        </button>
+        <div class="flex items-center gap-2">
+          <select
+            class="rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-1.5 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors w-28"
+            bind:value={viewingClientId}
+            onchange={(e) => handleViewingClientChange((e.target as HTMLSelectElement).value)}
+            disabled={loadingClients || feedLoading}
+          >
+            {#if loadingClients}
+              <option>Loading...</option>
+            {:else if clients.length === 0}
+              <option>No clients</option>
+            {:else}
+              {#each clients as client}
+                <option value={client.id}>{client.name}</option>
+              {/each}
+            {/if}
+          </select>
+          <button
+            class="inline-flex items-center gap-2 rounded-lg border border-gray-300 dark:border-gray-700 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            onclick={() => loadInsights(viewingClientId)}
+            disabled={feedLoading || !viewingClientId}
+          >
+            Refresh
+          </button>
+        </div>
       </div>
 
       <div class="flex-1 overflow-y-auto pr-1 space-y-4 max-h-128">
@@ -202,7 +237,11 @@
           {/each}
         {:else if !insightFeed.length}
           <div class="rounded-2xl border border-dashed border-gray-300 dark:border-gray-700 p-6 text-center text-sm text-gray-500 dark:text-gray-400">
-            No updates yet for this client. Share one using the form on the right.
+            {#if viewingClientId}
+              No updates yet for {clients.find(c => c.id === viewingClientId)?.name || 'this client'}. Share one using the form on the right.
+            {:else}
+              Select a client to view updates.
+            {/if}
           </div>
         {:else}
           {#each insightFeed as insight}

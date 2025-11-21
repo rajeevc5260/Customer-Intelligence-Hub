@@ -17,6 +17,9 @@
   let loading = $state(true);
   let submitting = $state(false);
   let updatingStatus = $state<string | null>(null);
+  let deletingTask = $state<string | null>(null);
+  let showDeleteConfirm = $state(false);
+  let taskToDelete = $state<string | null>(null);
   let message = $state('');
   let error = $state('');
 
@@ -32,6 +35,7 @@
 
   const userRole = $derived(authStore.user?.role ?? 'member');
   const canManageTasks = $derived(['consultant', 'leader', 'admin', 'ops'].includes(userRole));
+  const canDeleteTasks = $derived(['leader', 'admin', 'manager'].includes(userRole));
 
   async function loadTasks(pageNumber = 1) {
     loading = true;
@@ -150,6 +154,44 @@
 
   function toggleExpanded(taskId: string) {
     expandedTaskId = expandedTaskId === taskId ? null : taskId;
+  }
+
+  function openDeleteConfirm(taskId: string) {
+    taskToDelete = taskId;
+    showDeleteConfirm = true;
+  }
+
+  function closeDeleteConfirm() {
+    showDeleteConfirm = false;
+    taskToDelete = null;
+  }
+
+  async function handleDelete() {
+    if (!taskToDelete) return;
+
+    if (!canDeleteTasks) {
+      error = 'You do not have permission to delete tasks.';
+      closeDeleteConfirm();
+      return;
+    }
+
+    deletingTask = taskToDelete;
+    message = '';
+    error = '';
+
+    try {
+      await api.tasks.delete(taskToDelete);
+      message = 'Task deleted successfully.';
+      if (expandedTaskId === taskToDelete) {
+        expandedTaskId = null;
+      }
+      await loadTasks(page);
+      closeDeleteConfirm();
+    } catch (err: any) {
+      error = err?.message || 'Unable to delete task.';
+    } finally {
+      deletingTask = null;
+    }
   }
 </script>
 
@@ -300,15 +342,35 @@
                         <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 space-y-4">
                           <div class="flex items-start justify-between">
                             <h4 class="text-base font-semibold text-gray-900 dark:text-white">Task Details</h4>
-                            <button
-                              onclick={() => toggleExpanded(task.id)}
-                              class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                              aria-label="Close details"
-                            >
-                              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                              </svg>
-                            </button>
+                            <div class="flex items-center gap-2">
+                              {#if canDeleteTasks}
+                                <button
+                                  onclick={() => openDeleteConfirm(task.id)}
+                                  class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 p-1"
+                                  title="Delete task"
+                                  disabled={deletingTask === task.id}
+                                >
+                                  {#if deletingTask === task.id}
+                                    <svg class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                    </svg>
+                                  {:else}
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                    </svg>
+                                  {/if}
+                                </button>
+                              {/if}
+                              <button
+                                onclick={() => toggleExpanded(task.id)}
+                                class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                                aria-label="Close details"
+                              >
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                              </button>
+                            </div>
                           </div>
                           
                           <div class="grid grid-cols-2 gap-4">
@@ -506,5 +568,67 @@
       {/if}
     </div>
   </div>
+
+  {#if showDeleteConfirm}
+    <div class="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true">
+      <div class="flex min-h-screen items-center justify-center p-4">
+        <div 
+          class="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" 
+          role="button"
+          tabindex="0"
+          onclick={closeDeleteConfirm}
+          onkeydown={(e) => e.key === 'Escape' && closeDeleteConfirm()}
+        ></div>
+        
+        <div 
+          class="relative bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 w-full max-w-md"
+          role="dialog"
+          aria-modal="true"
+          onclick={(e) => e.stopPropagation()}
+        >
+          <div class="flex items-center gap-3 mb-4">
+            <div class="flex-shrink-0 w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+              <svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+              </svg>
+            </div>
+            <div class="flex-1">
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Delete Task</h3>
+              <p class="text-sm text-gray-500 dark:text-gray-400">This action cannot be undone.</p>
+            </div>
+            <button
+              onclick={closeDeleteConfirm}
+              class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              aria-label="Close dialog"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+
+          <p class="text-sm text-gray-700 dark:text-gray-300 mb-6">
+            Are you sure you want to delete this task? This will permanently remove the task and all associated data.
+          </p>
+
+          <div class="flex items-center justify-end gap-3">
+            <button
+              onclick={closeDeleteConfirm}
+              class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onclick={handleDelete}
+              disabled={deletingTask !== null}
+              class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {deletingTask ? 'Deleting...' : 'Delete Task'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  {/if}
 </section>
 
