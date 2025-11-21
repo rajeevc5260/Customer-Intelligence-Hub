@@ -117,11 +117,25 @@ Generate ONE opportunity and tasks for client: ${clientRow[0].name}
 
 Use only relevant responses.
 
-JSON:
+STRICT JSON RESPONSE ONLY:
+
 {
-  "opportunity": {...},
-  "tasks": [...]
+  "opportunity": {
+    "title": "string",
+    "description": "string",
+    "valueEstimate": "string | null"
+  },
+  "tasks": [
+    {
+      "title": "string",
+      "description": "string | null",
+      "assignedToTeam": "sales | consulting | leader | manager",
+      "priority": "low | medium | high",
+      "dueDate": "YYYY-MM-DD"
+    }
+  ]
 }
+Here manager is sales manager we call it as manager, leader is **Executive Leadership**
 
 BATCH CONTEXT:
 ${JSON.stringify(contextPayload, null, 2)}

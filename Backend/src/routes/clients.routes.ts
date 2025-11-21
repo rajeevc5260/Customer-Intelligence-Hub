@@ -40,11 +40,11 @@ clientsRouter.get("/", requireAuth, async (req, res) => {
     });
 });
 
-// Create client (leaders, admin, ops)
+// Create client (leaders, admin, manager)
 clientsRouter.post(
     "/",
     requireAuth,
-    requireAnyRole("admin", "leader", "ops"),
+    requireAnyRole("admin", "leader", "manager"),
     async (req, res) => {
         const { name, industry, description } = req.body;
 
@@ -61,7 +61,7 @@ clientsRouter.post(
 clientsRouter.put(
     "/:id",
     requireAuth,
-    requireAnyRole("admin", "leader", "ops"),
+    requireAnyRole("admin", "leader", "manager"),
     async (req, res) => {
         const { id } = req.params;
         const { name, industry, description } = req.body;

@@ -8,11 +8,11 @@ import { eq } from "drizzle-orm";
 export const projectsRouter = express.Router();
 
 // Create project
-// Roles: consultant, leader, admin, ops
+// Roles: consultant, leader, admin, manager
 projectsRouter.post(
     "/",
     requireAuth,
-    requireAnyRole("consultant", "leader", "admin", "ops"),
+    requireAnyRole("consultant", "leader", "admin", "manager"),
     async (req, res) => {
         const { clientId, name, description, status } = req.body;
 
@@ -54,7 +54,7 @@ projectsRouter.get(
 projectsRouter.put(
     "/:id",
     requireAuth,
-    requireAnyRole("consultant", "leader", "admin", "ops"),
+    requireAnyRole("consultant", "leader", "admin", "manager"),
     async (req, res) => {
         const { id } = req.params;
         const { name, description, status } = req.body;

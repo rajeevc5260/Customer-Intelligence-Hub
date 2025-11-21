@@ -144,13 +144,13 @@ STRICT JSON RESPONSE ONLY:
     {
       "title": "string",
       "description": "string | null",
-      "assignedToTeam": "sales | consulting | practice | ops",
+      "assignedToTeam": "sales | consulting | leader | manager",
       "priority": "low | medium | high",
       "dueDate": "YYYY-MM-DD"
     }
   ]
 }
-
+Here manager is sales manager we call it as manager, leader is **Executive Leadership**
 FULL BATCH CONTEXT:
 ${JSON.stringify(contextPayload, null, 2)}
                     `

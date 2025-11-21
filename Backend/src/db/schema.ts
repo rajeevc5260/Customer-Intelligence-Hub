@@ -5,7 +5,7 @@ export const appUsers = pgTable("app_users", {
   email: text("email").notNull(),
   fullName: text("full_name").notNull(),
   role: text("role").default("member"), // admin, leader, consultant, etc.
-  team: text("team"), // "consulting", "sales", "practice", "ops", etc.
+  team: text("team"), // "consulting", "sales", "leader", "manager", etc.
   createdAt: timestamp("created_at").defaultNow(),
 });
 

@@ -9,12 +9,12 @@ export const tasksRouter = express.Router();
 
 /* ---------------------------
    CREATE TASK
-   Roles: consultant, leader, admin, ops
+   Roles: consultant, leader, admin, manager
 ----------------------------- */
 tasksRouter.post(
     "/",
     requireAuth,
-    requireAnyRole("consultant", "leader", "admin", "ops"),
+    requireAnyRole("consultant", "leader", "admin", "manager"),
     async (req, res) => {
         const { assignedTo, insightId, opportunityId, title, description, priority, dueDate } = req.body;
 
@@ -133,7 +133,7 @@ tasksRouter.get(
 tasksRouter.put(
     "/:id",
     requireAuth,
-    requireAnyRole("consultant", "leader", "admin", "ops"),
+    requireAnyRole("consultant", "leader", "admin", "manager"),
     async (req, res) => {
         const { id } = req.params;
         const { title, description, priority, dueDate, assignedTo } = req.body;
@@ -180,7 +180,7 @@ tasksRouter.post(
 tasksRouter.delete(
     "/:id",
     requireAuth,
-    requireAnyRole("leader", "admin", "ops"),
+    requireAnyRole("leader", "admin", "manager"),
     async (req, res) => {
         const { id } = req.params;
 

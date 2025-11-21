@@ -54,11 +54,11 @@ opportunitiesRouter.get("/", requireAuth, async (req, res) => {
 });
 
 
-// Create opportunity (leaders / sales / practice leaders)
+// Create opportunity (leaders / sales / leader)
 opportunitiesRouter.post(
   "/",
   requireAuth,
-  requireAnyRole("leader", "admin", "ops"),
+  requireAnyRole("leader", "admin", "manager"),
   async (req, res) => {
     const { clientId, insightId, title, description, valueEstimate } = req.body;
 
@@ -85,7 +85,7 @@ opportunitiesRouter.post(
 opportunitiesRouter.post(
   "/:id/stage",
   requireAuth,
-  requireAnyRole("leader", "admin", "ops"),
+  requireAnyRole("leader", "admin", "manager"),
   async (req, res) => {
     const { id } = req.params;
     const { stage } = req.body;
@@ -103,7 +103,7 @@ opportunitiesRouter.post(
 opportunitiesRouter.put(
   "/:id",
   requireAuth,
-  requireAnyRole("leader", "admin", "ops"),
+  requireAnyRole("leader", "admin", "manager"),
   async (req, res) => {
     const { id } = req.params;
     const { clientId, insightId, title, description, valueEstimate, stage } = req.body;

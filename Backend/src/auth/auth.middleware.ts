@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
-import { supabasePublic } from "./supabase";
-import { db } from "../db/drizzle";
-import { appUsers } from "../db/schema";
+import { supabasePublic } from "./supabase.js";
+import { db } from "../db/drizzle.js";
+import { appUsers } from "../db/schema.js";
 import { eq } from "drizzle-orm";
 
 export interface AuthedUser {

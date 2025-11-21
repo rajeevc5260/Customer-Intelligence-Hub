@@ -6,8 +6,8 @@ import { requireAuth, requireAnyRole } from "../auth/auth.middleware.js";
 import { eq } from "drizzle-orm";
 export const projectsRouter = express.Router();
 // Create project
-// Roles: consultant, leader, admin, ops
-projectsRouter.post("/", requireAuth, requireAnyRole("consultant", "leader", "admin", "ops"), async (req, res) => {
+// Roles: consultant, leader, admin, manager
+projectsRouter.post("/", requireAuth, requireAnyRole("consultant", "leader", "admin", "manager"), async (req, res) => {
     const { clientId, name, description, status } = req.body;
     if (!clientId || !name) {
         return res.status(400).json({ error: "clientId and name are required" });
@@ -32,7 +32,7 @@ projectsRouter.get("/by-client/:clientId", requireAuth, async (req, res) => {
     res.json(data);
 });
 // update projects
-projectsRouter.put("/:id", requireAuth, requireAnyRole("consultant", "leader", "admin", "ops"), async (req, res) => {
+projectsRouter.put("/:id", requireAuth, requireAnyRole("consultant", "leader", "admin", "manager"), async (req, res) => {
     const { id } = req.params;
     const { name, description, status } = req.body;
     const updateData = {};

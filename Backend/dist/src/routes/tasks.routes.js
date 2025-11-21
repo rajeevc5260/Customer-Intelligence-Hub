@@ -7,9 +7,9 @@ import { eq, ilike, sql } from "drizzle-orm";
 export const tasksRouter = express.Router();
 /* ---------------------------
    CREATE TASK
-   Roles: consultant, leader, admin, ops
+   Roles: consultant, leader, admin, manager
 ----------------------------- */
-tasksRouter.post("/", requireAuth, requireAnyRole("consultant", "leader", "admin", "ops"), async (req, res) => {
+tasksRouter.post("/", requireAuth, requireAnyRole("consultant", "leader", "admin", "manager"), async (req, res) => {
     const { assignedTo, insightId, opportunityId, title, description, priority, dueDate } = req.body;
     if (!title) {
         return res.status(400).json({ error: "title is required" });
@@ -93,7 +93,7 @@ tasksRouter.get("/by-insight/:insightId", requireAuth, async (req, res) => {
 /* ---------------------------
    UPDATE TASK (title, description, dueDate, priority, assignedTo)
 ----------------------------- */
-tasksRouter.put("/:id", requireAuth, requireAnyRole("consultant", "leader", "admin", "ops"), async (req, res) => {
+tasksRouter.put("/:id", requireAuth, requireAnyRole("consultant", "leader", "admin", "manager"), async (req, res) => {
     const { id } = req.params;
     const { title, description, priority, dueDate, assignedTo } = req.body;
     await db
@@ -125,7 +125,7 @@ tasksRouter.post("/:id/status", requireAuth, async (req, res) => {
 /* ---------------------------
    DELETE TASK
 ----------------------------- */
-tasksRouter.delete("/:id", requireAuth, requireAnyRole("leader", "admin", "ops"), async (req, res) => {
+tasksRouter.delete("/:id", requireAuth, requireAnyRole("leader", "admin", "manager"), async (req, res) => {
     const { id } = req.params;
     await db.delete(tasks).where(eq(tasks.id, id));
     res.json({ success: true });

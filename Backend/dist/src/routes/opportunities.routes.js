@@ -44,8 +44,8 @@ opportunitiesRouter.get("/", requireAuth, async (req, res) => {
         data,
     });
 });
-// Create opportunity (leaders / sales / practice leaders)
-opportunitiesRouter.post("/", requireAuth, requireAnyRole("leader", "admin", "ops"), async (req, res) => {
+// Create opportunity (leaders / sales / leader leaders)
+opportunitiesRouter.post("/", requireAuth, requireAnyRole("leader", "admin", "manager"), async (req, res) => {
     const { clientId, insightId, title, description, valueEstimate } = req.body;
     if (!clientId || !title) {
         return res.status(400).json({ error: "clientId and title required" });
@@ -63,7 +63,7 @@ opportunitiesRouter.post("/", requireAuth, requireAnyRole("leader", "admin", "op
     res.json({ success: true, id });
 });
 // Update stage
-opportunitiesRouter.post("/:id/stage", requireAuth, requireAnyRole("leader", "admin", "ops"), async (req, res) => {
+opportunitiesRouter.post("/:id/stage", requireAuth, requireAnyRole("leader", "admin", "manager"), async (req, res) => {
     const { id } = req.params;
     const { stage } = req.body;
     await db
@@ -73,7 +73,7 @@ opportunitiesRouter.post("/:id/stage", requireAuth, requireAnyRole("leader", "ad
     res.json({ success: true });
 });
 // Update opportunity
-opportunitiesRouter.put("/:id", requireAuth, requireAnyRole("leader", "admin", "ops"), async (req, res) => {
+opportunitiesRouter.put("/:id", requireAuth, requireAnyRole("leader", "admin", "manager"), async (req, res) => {
     const { id } = req.params;
     const { clientId, insightId, title, description, valueEstimate, stage } = req.body;
     // Build update object dynamically

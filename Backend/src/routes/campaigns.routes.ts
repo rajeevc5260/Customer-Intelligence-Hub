@@ -14,11 +14,11 @@ import { generateOpportunityAndTasksFromCampaignBatch, } from "../ai/opportunity
 
 export const campaignsRouter = express.Router();
 
-// Create campaign (leaders / admin / ops)
+// Create campaign (leaders / admin / manager)
 campaignsRouter.post(
     "/",
     requireAuth,
-    requireAnyRole("leader", "admin", "ops"),
+    requireAnyRole("leader", "admin", "manager"),
     async (req, res) => {
         const { topic, description, questions, audienceUserIds } = req.body;
 
@@ -168,7 +168,7 @@ campaignsRouter.get(
 // campaignsRouter.post(
 //     "/:campaignId/promote",
 //     requireAuth,
-//     requireAnyRole("leader", "admin", "ops"),
+//     requireAnyRole("leader", "admin", "manager"),
 //     async (req, res) => {
 //         const { campaignId } = req.params;
 

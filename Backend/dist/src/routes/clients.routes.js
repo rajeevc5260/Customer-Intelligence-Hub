@@ -32,8 +32,8 @@ clientsRouter.get("/", requireAuth, async (req, res) => {
         data,
     });
 });
-// Create client (leaders, admin, ops)
-clientsRouter.post("/", requireAuth, requireAnyRole("admin", "leader", "ops"), async (req, res) => {
+// Create client (leaders, admin, manager)
+clientsRouter.post("/", requireAuth, requireAnyRole("admin", "leader", "manager"), async (req, res) => {
     const { name, industry, description } = req.body;
     if (!name)
         return res.status(400).json({ error: "Name required" });
@@ -42,7 +42,7 @@ clientsRouter.post("/", requireAuth, requireAnyRole("admin", "leader", "ops"), a
     res.json({ success: true, id });
 });
 // Update client
-clientsRouter.put("/:id", requireAuth, requireAnyRole("admin", "leader", "ops"), async (req, res) => {
+clientsRouter.put("/:id", requireAuth, requireAnyRole("admin", "leader", "manager"), async (req, res) => {
     const { id } = req.params;
     const { name, industry, description } = req.body;
     // Dynamic fields update

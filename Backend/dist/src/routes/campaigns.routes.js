@@ -7,8 +7,8 @@ import crypto from "node:crypto";
 import { enrichCampaignResponse } from "../ai/campaignEnrichment.js";
 import { generateOpportunityAndTasksFromCampaignBatch, } from "../ai/opportunityFromCampaign.js";
 export const campaignsRouter = express.Router();
-// Create campaign (leaders / admin / ops)
-campaignsRouter.post("/", requireAuth, requireAnyRole("leader", "admin", "ops"), async (req, res) => {
+// Create campaign (leaders / admin / manager)
+campaignsRouter.post("/", requireAuth, requireAnyRole("leader", "admin", "manager"), async (req, res) => {
     const { topic, description, questions, audienceUserIds } = req.body;
     if (!topic)
         return res.status(400).json({ error: "topic required" });
@@ -122,7 +122,7 @@ campaignsRouter.get("/:id/responses", requireAuth, requireAnyRole("leader", "adm
 // campaignsRouter.post(
 //     "/:campaignId/promote",
 //     requireAuth,
-//     requireAnyRole("leader", "admin", "ops"),
+//     requireAnyRole("leader", "admin", "manager"),
 //     async (req, res) => {
 //         const { campaignId } = req.params;
 //         try {

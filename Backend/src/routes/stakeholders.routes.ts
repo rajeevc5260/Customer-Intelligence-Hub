@@ -8,11 +8,11 @@ import { eq, sql, ilike } from "drizzle-orm";
 export const stakeholdersRouter = express.Router();
 
 // Create stakeholder
-// Roles: consultant, leader, admin, ops
+// Roles: consultant, leader, admin, manager
 stakeholdersRouter.post(
     "/",
     requireAuth,
-    requireAnyRole("consultant", "leader", "admin", "ops"),
+    requireAnyRole("consultant", "leader", "admin", "manager"),
     async (req, res) => {
         const { clientId, name, role, email, notes } = req.body;
 
@@ -108,7 +108,7 @@ stakeholdersRouter.get(
 stakeholdersRouter.put(
     "/:id",
     requireAuth,
-    requireAnyRole("consultant", "leader", "admin", "ops"),
+    requireAnyRole("consultant", "leader", "admin", "manager"),
     async (req, res) => {
         const { id } = req.params;
         const { clientId, name, role, email, notes } = req.body;

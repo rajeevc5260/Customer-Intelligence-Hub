@@ -6,8 +6,8 @@ import { requireAuth, requireAnyRole } from "../auth/auth.middleware.js";
 import { eq, sql, ilike } from "drizzle-orm";
 export const stakeholdersRouter = express.Router();
 // Create stakeholder
-// Roles: consultant, leader, admin, ops
-stakeholdersRouter.post("/", requireAuth, requireAnyRole("consultant", "leader", "admin", "ops"), async (req, res) => {
+// Roles: consultant, leader, admin, manager
+stakeholdersRouter.post("/", requireAuth, requireAnyRole("consultant", "leader", "admin", "manager"), async (req, res) => {
     const { clientId, name, role, email, notes } = req.body;
     if (!clientId || !name) {
         return res.status(400).json({ error: "clientId and name are required" });
@@ -73,7 +73,7 @@ stakeholdersRouter.get("/by-client/:clientId", requireAuth, async (req, res) => 
     res.json(data);
 });
 // Update stakeholder
-stakeholdersRouter.put("/:id", requireAuth, requireAnyRole("consultant", "leader", "admin", "ops"), async (req, res) => {
+stakeholdersRouter.put("/:id", requireAuth, requireAnyRole("consultant", "leader", "admin", "manager"), async (req, res) => {
     const { id } = req.params;
     const { clientId, name, role, email, notes } = req.body;
     // Build dynamic update object
