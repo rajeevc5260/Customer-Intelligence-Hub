@@ -35,7 +35,7 @@ async function request(path: string, options: RequestInit = {}) {
 
 export const api = {
   profile: {
-    update: (payload: { fullName?: string; team?: string; role?: string }) =>
+    update: (payload: { userId?: string; fullName?: string; team?: string; role?: string }) =>
       request("/api/profile", {
         method: "PUT",
         body: JSON.stringify(payload),
@@ -209,6 +209,7 @@ export const api = {
       }),
   },
   users: {
+    list: () => request("/api/users"),
     getById: (id: string) => request(`/api/users/${id}`),
   },
 };

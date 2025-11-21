@@ -1,10 +1,27 @@
 import express from "express";
-import { requireAuth } from "../auth/auth.middleware.js";
+import { requireAuth, requireAnyRole } from "../auth/auth.middleware.js";
 import { db } from "../db/drizzle.js";
 import { appUsers } from "../db/schema.js";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 
 export const usersRouter = express.Router();
+
+// GET ALL USERS (admin and leader only)
+usersRouter.get("/", requireAuth, requireAnyRole("admin", "leader"), async (req, res) => {
+  const users = await db
+    .select({
+      id: appUsers.id,
+      email: appUsers.email,
+      fullName: appUsers.fullName,
+      role: appUsers.role,
+      team: appUsers.team,
+      createdAt: appUsers.createdAt,
+    })
+    .from(appUsers)
+    .orderBy(desc(appUsers.createdAt));
+
+  res.json(users);
+});
 
 // GET USER BY ID
 usersRouter.get("/:id", requireAuth, async (req, res) => {

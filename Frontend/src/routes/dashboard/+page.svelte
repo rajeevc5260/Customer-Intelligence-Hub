@@ -10,6 +10,7 @@
   import OpportunitiesPanel from '$lib/components/dashboard/OpportunitiesPanel.svelte';
   import CampaignsPanel from '$lib/components/dashboard/CampaignsPanel.svelte';
   import TasksPanel from '$lib/components/dashboard/TasksPanel.svelte';
+  import UsersPanel from '$lib/components/dashboard/UsersPanel.svelte';
 
   let showInviteDialog = $state(false);
   let activeSection = $state('overview');
@@ -24,7 +25,8 @@
     { id: 'insights', label: 'Insights' },
     { id: 'opportunities', label: 'Opportunities' },
     { id: 'tasks', label: 'Tasks' },
-    { id: 'campaigns', label: 'Campaigns' }
+    { id: 'campaigns', label: 'Campaigns' },
+    { id: 'users', label: 'Users' }
   ];
 
   const sections = $derived(() => {
@@ -35,18 +37,18 @@
       );
     } else if (userRole === "manager"){
       return allSections.filter(s => 
-        ['tasks', 'relationships', 'opportunities' ,'insights', 'campaigns', 'clients', ].includes(s.id)
+        ['tasks', 'relationships', 'opportunities' ,'insights', 'campaigns', 'clients'].includes(s.id)
       );
     } else if (userRole === "admin"){
       return allSections.filter(s => 
-        ['relationships', 'clients', ].includes(s.id)
+        ['relationships', 'clients', 'users'].includes(s.id)
       );
-    } else if ( userRole === 'leader') {
-      // Manager, leader, and admin: see everything
+    } else if (userRole === 'leader') {
+      // Leader: see everything including users
       return allSections;
     } else {
-      // Default: see everything (fallback)
-      return allSections;
+      // Default: see everything except users (fallback)
+      return allSections.filter(s => s.id !== 'users');
     }
   });
 
@@ -146,6 +148,8 @@
             <CampaignsPanel />
           {:else if activeSection === 'tasks'}
             <TasksPanel />
+          {:else if activeSection === 'users'}
+            <UsersPanel />
           {/if}
         </div>
       </div>

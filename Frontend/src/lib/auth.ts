@@ -20,7 +20,7 @@ class AuthService {
     return response.json();
   }
 
-  async invite(email: string, fullName: string, role: string = 'member') {
+  async invite(email: string, fullName: string, role: string = 'consultant') {
     const response = await fetch(`${API_BASE}/auth/invite`, {
       method: 'POST',
       headers: {

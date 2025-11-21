@@ -4,6 +4,7 @@
   let { isOpen = $bindable(false) } = $props();
   let email = $state('');
   let fullName = $state('');
+  let role = $state('consultant');
   let loading = $state(false);
   let message = $state('');
 
@@ -14,7 +15,7 @@
     message = '';
     
     try {
-      const result = await authStore.invite(email, fullName);
+      const result = await authStore.invite(email, fullName, role);
       message = result.success ? result.message : result.error;
       
       if (result.success) {
@@ -22,6 +23,7 @@
           isOpen = false;
           email = '';
           fullName = '';
+          role = 'consultant';
           message = '';
         }, 2000);
       }
@@ -36,6 +38,7 @@
     isOpen = false;
     email = '';
     fullName = '';
+    role = 'consultant';
     message = '';
   }
 </script>
@@ -91,6 +94,23 @@
               class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               placeholder="John Doe"
             />
+          </div>
+
+          <div>
+            <label for="invite-role" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Role
+            </label>
+            <select
+              id="invite-role"
+              required
+              bind:value={role}
+              class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            >
+              <option value="consultant">Consultant</option>
+              <option value="manager">Manager</option>
+              <option value="leader">Leader</option>
+              <option value="admin">Admin</option>
+            </select>
           </div>
 
           <button

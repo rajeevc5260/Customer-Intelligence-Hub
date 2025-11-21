@@ -17,8 +17,24 @@ profileRouter.get("/", requireAuth, async (req, res) => {
 });
 
 // Update profile
-profileRouter.put("/", requireAuth, requireAnyRole("admin"), async (req, res) => {
-  const { fullName, team, role } = req.body;
+profileRouter.put("/", requireAuth, async (req, res) => {
+  const { userId, fullName, team, role } = req.body;
+
+  // Determine which user to update
+  let targetUserId: string;
+  
+  if (userId) {
+    // If userId is provided, only admins and leaders can update other users
+    if (req.user!.role !== "admin" && req.user!.role !== "leader") {
+      return res.status(403).json({
+        error: "Only admins and leaders can update other users' profiles",
+      });
+    }
+    targetUserId = userId;
+  } else {
+    // If no userId provided, update current user's profile
+    targetUserId = req.user!.id;
+  }
 
   const updateData: any = {};
 
@@ -44,8 +60,14 @@ profileRouter.put("/", requireAuth, requireAnyRole("admin"), async (req, res) =>
   const updated = await db
     .update(appUsers)
     .set(updateData)
-    .where(eq(appUsers.id, req.user!.id))
+    .where(eq(appUsers.id, targetUserId))
     .returning();
+
+  if (!updated[0]) {
+    return res.status(404).json({
+      error: "User not found",
+    });
+  }
 
   res.json({
     success: true,
