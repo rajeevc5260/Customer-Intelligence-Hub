@@ -165,6 +165,15 @@ export const api = {
         method: "POST",
         body: JSON.stringify(payload),
       }),
+    updateStatus: (campaignId: string, status: string) =>
+      request(`/api/campaigns/${campaignId}/status`, {
+        method: "PUT",
+        body: JSON.stringify({ status }),
+      }),
+    delete: (campaignId: string) =>
+      request(`/api/campaigns/${campaignId}`, {
+        method: "DELETE",
+      }),
     respond: (campaignId: string, payload: { rawResponse: string; clientId: string }) =>
       request(`/api/campaigns/${campaignId}/respond`, {
         method: "POST",

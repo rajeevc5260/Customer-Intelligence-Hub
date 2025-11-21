@@ -12,8 +12,11 @@
   let loadingResponses = $state(false);
   let submittingCampaign = $state(false);
   let submittingResponse = $state(false);
+  let updatingStatus = $state<string | null>(null);
+  let deletingCampaign = $state<string | null>(null);
   let message = $state('');
   let error = $state('');
+  let expandedQuestions = $state<Set<string>>(new Set());
 
   let selectedCampaignId = $state<string | null>(null);
   let responsesInfo = $state('');
@@ -33,11 +36,17 @@
   const userRole = $derived(authStore.user?.role ?? 'member');
   const userId = $derived(authStore.user?.id ?? null);
   // Only manager and leader can launch campaigns
-  const canManageCampaigns = $derived(['manager', 'leader'].includes(userRole));
+  const canManageCampaigns = $derived(['manager', 'leader', 'admin'].includes(userRole));
   // Only consultants can submit responses
   const canRespond = $derived(userRole === 'consultant');
   // Leaders can see all responses, managers see only their campaigns' responses, consultants see only their own
   const canViewResponses = $derived(['leader', 'manager', 'consultant'].includes(userRole));
+  // Leaders/admins can update/delete all campaigns, managers can only update/delete their own
+  const canUpdateCampaign = $derived((campaign: Campaign) => {
+    if (userRole === 'leader' || userRole === 'admin') return true;
+    if (userRole === 'manager' && campaign.createdBy === userId) return true;
+    return false;
+  });
 
   async function loadCampaigns() {
     loadingCampaigns = true;
@@ -217,6 +226,79 @@
     }
   }
 
+  function toggleQuestions(campaignId: string, event: Event) {
+    event.stopPropagation();
+    const newSet = new Set(expandedQuestions);
+    if (newSet.has(campaignId)) {
+      newSet.delete(campaignId);
+    } else {
+      newSet.add(campaignId);
+    }
+    expandedQuestions = newSet;
+  }
+
+  function getQuestionsList(questions: string | null): string[] {
+    if (!questions) return [];
+    try {
+      const parsed = JSON.parse(questions);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
+  async function handleUpdateStatus(campaignId: string, newStatus: string, event: Event) {
+    event.stopPropagation();
+    if (!canUpdateCampaign(campaigns.find(c => c.id === campaignId)!)) {
+      error = 'You do not have permission to update this campaign.';
+      return;
+    }
+
+    updatingStatus = campaignId;
+    message = '';
+    error = '';
+
+    try {
+      await api.campaigns.updateStatus(campaignId, newStatus);
+      message = 'Campaign status updated successfully.';
+      await loadCampaigns();
+    } catch (err: any) {
+      error = err?.message || 'Unable to update campaign status.';
+    } finally {
+      updatingStatus = null;
+    }
+  }
+
+  async function handleDeleteCampaign(campaignId: string, event: Event) {
+    event.stopPropagation();
+    if (!confirm('Are you sure you want to delete this campaign? This action cannot be undone.')) {
+      return;
+    }
+
+    if (!canUpdateCampaign(campaigns.find(c => c.id === campaignId)!)) {
+      error = 'You do not have permission to delete this campaign.';
+      return;
+    }
+
+    deletingCampaign = campaignId;
+    message = '';
+    error = '';
+
+    try {
+      await api.campaigns.delete(campaignId);
+      message = 'Campaign deleted successfully.';
+      if (selectedCampaignId === campaignId) {
+        selectedCampaignId = null;
+        responses = [];
+      }
+      await loadCampaigns();
+    } catch (err: any) {
+      error = err?.message || 'Unable to delete campaign.';
+    } finally {
+      deletingCampaign = null;
+    }
+  }
+
   onMount(() => {
     loadCampaigns();
     loadClients();
@@ -255,7 +337,7 @@
     <div class="xl:col-span-2 space-y-6">
       <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 shadow-sm">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="text-base font-semibold text-gray-900 dark:text-white">Active Campaigns</h3>
+          <h3 class="text-base font-semibold text-gray-900 dark:text-white">Campaigns</h3>
           <span class="inline-flex items-center rounded-full bg-indigo-100 dark:bg-indigo-900/40 px-2.5 py-0.5 text-xs font-semibold text-indigo-700 dark:text-indigo-300">
             {campaigns.length}
           </span>
@@ -271,30 +353,99 @@
         {:else}
           <div class="space-y-2 max-h-96 overflow-y-auto pr-1">
             {#each [...campaigns].reverse() as campaign}
-              <button
-                class="w-full text-left rounded-lg border px-4 py-3 transition-all {selectedCampaignId === campaign.id ? 'border-indigo-500 bg-indigo-50 dark:border-indigo-400 dark:bg-indigo-900/20 shadow-sm' : 'border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:border-gray-300 dark:hover:border-gray-700'}"
-                onclick={() => handleSelectCampaign(campaign.id)}
+              <div
+                class="rounded-lg border px-4 py-3 transition-all {selectedCampaignId === campaign.id ? 'border-indigo-500 bg-indigo-50 dark:border-indigo-400 dark:bg-indigo-900/20 shadow-sm' : 'border-gray-200 dark:border-gray-800'}"
               >
-                <div class="flex items-start justify-between gap-2">
-                  <p class="text-sm font-semibold text-gray-900 dark:text-white flex-1">{campaign.topic}</p>
-                  <span class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                    {new Date(campaign.createdAt).toLocaleDateString()}
-                  </span>
-                </div>
-                {#if campaign.description}
-                  <p class="text-xs text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">
-                    {campaign.description}
-                  </p>
+                <button
+                  class="w-full text-left"
+                  onclick={() => handleSelectCampaign(campaign.id)}
+                >
+                  <div class="flex items-start justify-between gap-2">
+                    <div class="flex-1">
+                      <div class="flex items-center gap-2">
+                        <p class="text-sm font-semibold text-gray-900 dark:text-white">{campaign.topic}</p>
+                        <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium {
+                          campaign.status === 'active' 
+                            ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300' 
+                            : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
+                        }">
+                          {campaign.status}
+                        </span>
+                      </div>
+                      <span class="text-xs text-gray-500 dark:text-gray-400">
+                        {new Date(campaign.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                    {#if canUpdateCampaign(campaign)}
+                      <div class="flex items-center gap-1" onclick={(e) => e.stopPropagation()}>
+                        <select
+                          class="text-xs rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-2 py-1 w-20"
+                          value={campaign.status}
+                          onchange={(e) => handleUpdateStatus(campaign.id, (e.target as HTMLSelectElement).value, e)}
+                          disabled={updatingStatus === campaign.id}
+                          onclick={(e) => e.stopPropagation()}
+                        >
+                          <option value="active">Active</option>
+                          <option value="closed">Closed</option>
+                        </select>
+                        <button
+                          class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 p-1"
+                          onclick={(e) => handleDeleteCampaign(campaign.id, e)}
+                          disabled={deletingCampaign === campaign.id}
+                          title="Delete campaign"
+                        >
+                          {#if deletingCampaign === campaign.id}
+                            <svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            </svg>
+                          {:else}
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                            </svg>
+                          {/if}
+                        </button>
+                      </div>
+                    {/if}
+                  </div>
+                  {#if campaign.description}
+                    <p class="text-xs text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">
+                      {campaign.description}
+                    </p>
+                  {/if}
+                  <div class="mt-2 flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                    <span class="inline-flex items-center gap-1">
+                      <span class="font-semibold text-indigo-600 dark:text-indigo-400">{campaign.responseCount}</span>
+                      responses
+                    </span>
+                    <span>•</span>
+                    <span>{getQuestionCount(campaign.questions)} questions</span>
+                  </div>
+                </button>
+                {#if getQuestionCount(campaign.questions) > 0}
+                  <div class="mt-2 flex justify-end">
+                    <button
+                      class="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300"
+                      onclick={(e) => toggleQuestions(campaign.id, e)}
+                      title={expandedQuestions.has(campaign.id) ? 'Hide questions' : 'Show questions'}
+                    >
+                      {expandedQuestions.has(campaign.id) ? 'Hide' : 'Show'} questions
+                    </button>
+                  </div>
                 {/if}
-                <div class="mt-2 flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
-                  <span class="inline-flex items-center gap-1">
-                    <span class="font-semibold text-indigo-600 dark:text-indigo-400">{campaign.responseCount}</span>
-                    responses
-                  </span>
-                  <span>•</span>
-                  <span>{getQuestionCount(campaign.questions)} questions</span>
-                </div>
-              </button>
+                {#if expandedQuestions.has(campaign.id) && getQuestionCount(campaign.questions) > 0}
+                  <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                    <p class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">Questions:</p>
+                    <ul class="space-y-1.5">
+                      {#each getQuestionsList(campaign.questions) as question}
+                        <li class="text-xs text-gray-600 dark:text-gray-400 flex items-start gap-2">
+                          <span class="text-indigo-600 dark:text-indigo-400 mt-0.5">•</span>
+                          <span>{question}</span>
+                        </li>
+                      {/each}
+                    </ul>
+                  </div>
+                {/if}
+              </div>
             {/each}
           </div>
         {/if}

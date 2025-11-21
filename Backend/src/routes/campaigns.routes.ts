@@ -145,6 +145,108 @@ campaignsRouter.post(
     }
 );
 
+// Update campaign status (leader can update all, manager can only update campaigns they created)
+campaignsRouter.put(
+    "/:id/status",
+    requireAuth,
+    requireAnyRole("leader", "admin", "manager"),
+    async (req, res) => {
+        const { id } = req.params;
+        const { status } = req.body;
+
+        if (!status || !["active", "closed"].includes(status)) {
+            return res.status(400).json({ error: "status must be 'active' or 'closed'" });
+        }
+
+        // Get the campaign to check ownership
+        const campaign = await db
+            .select()
+            .from(campaigns)
+            .where(eq(campaigns.id, id))
+            .limit(1);
+
+        if (!campaign[0]) {
+            return res.status(404).json({ error: "Campaign not found" });
+        }
+
+        // Check permissions: leader/admin can update all, manager can only update their own
+        if (req.user!.role === "manager" && campaign[0].createdBy !== req.user!.id) {
+            return res.status(403).json({
+                error: "You can only update campaigns you created",
+            });
+        }
+
+        const updated = await db
+            .update(campaigns)
+            .set({ status })
+            .where(eq(campaigns.id, id))
+            .returning();
+
+        res.json({ success: true, campaign: updated[0] });
+    }
+);
+
+// Delete campaign (leader can delete all, manager can only delete campaigns they created)
+campaignsRouter.delete(
+    "/:id",
+    requireAuth,
+    requireAnyRole("leader", "admin", "manager"),
+    async (req, res) => {
+        const { id } = req.params;
+
+        // Get the campaign to check ownership
+        const campaign = await db
+            .select()
+            .from(campaigns)
+            .where(eq(campaigns.id, id))
+            .limit(1);
+
+        if (!campaign[0]) {
+            return res.status(404).json({ error: "Campaign not found" });
+        }
+
+        // Check permissions: leader/admin can delete all, manager can only delete their own
+        if (req.user!.role === "manager" && campaign[0].createdBy !== req.user!.id) {
+            return res.status(403).json({
+                error: "You can only delete campaigns you created",
+            });
+        }
+
+        // Count responses before deletion (for logging/audit)
+        const responsesToDelete = await db
+            .select()
+            .from(campaignResponses)
+            .where(eq(campaignResponses.campaignId, id));
+        const responseCount = responsesToDelete.length;
+
+        // Count audience members before deletion
+        const audienceToDelete = await db
+            .select()
+            .from(campaignAudience)
+            .where(eq(campaignAudience.campaignId, id));
+        const audienceCount = audienceToDelete.length;
+
+        // Delete in correct order to respect FK constraints:
+        // 1. Delete campaign audience first (FK constraint)
+        await db.delete(campaignAudience).where(eq(campaignAudience.campaignId, id));
+
+        // 2. Delete campaign responses (FK constraint) - CRITICAL for AI process tracking
+        await db.delete(campaignResponses).where(eq(campaignResponses.campaignId, id));
+
+        // 3. Delete the campaign itself
+        await db.delete(campaigns).where(eq(campaigns.id, id));
+
+        console.log(`[CAMPAIGN DELETE] Campaign ${id} deleted. Removed ${responseCount} responses and ${audienceCount} audience members.`);
+
+        res.json({ 
+            success: true, 
+            message: "Campaign deleted successfully",
+            deletedResponses: responseCount,
+            deletedAudience: audienceCount
+        });
+    }
+);
+
 // List responses for a campaign (role-based filtering)
 campaignsRouter.get(
     "/:id/responses",
